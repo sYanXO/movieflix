@@ -38,6 +38,22 @@ export interface RecommendResponse {
   mood_profile: MoodProfile;
 }
 
+export interface MoodAttribute {
+  label: string;
+  score: number; // 0-100
+}
+
+export interface MoodBreakdownResponse {
+  attributes: MoodAttribute[];
+  persona: string;
+}
+
+export interface FriendRecommendResponse {
+  recommendations: Movie[];
+  mood_profile: MoodProfile;
+  merged_mood: string;
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
@@ -57,6 +73,17 @@ export function getNextQuestion(answers: Record<string, string>): Promise<Questi
 
 export function getRecommendations(answers: Record<string, string>): Promise<RecommendResponse> {
   return post<RecommendResponse>('/api/recommend', { answers });
+}
+
+export function getFriendRecommendations(
+  answersA: Record<string, string>,
+  answersB: Record<string, string>
+): Promise<FriendRecommendResponse> {
+  return post<FriendRecommendResponse>('/api/recommend-friends', { answers_a: answersA, answers_b: answersB });
+}
+
+export function getMoodBreakdown(moodProfile: MoodProfile): Promise<MoodBreakdownResponse> {
+  return post<MoodBreakdownResponse>('/api/mood-breakdown', { mood_profile: moodProfile });
 }
 
 export function getExplanation(
