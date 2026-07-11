@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -57,9 +58,18 @@ func main() {
 	// Setup Gin router
 	r := gin.Default()
 
-	// CORS: allow Next.js dev server
+	// CORS: allow Next.js dev server and Vercel deployments
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "https://*.vercel.app"},
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "http://localhost:3000" {
+				return true
+			}
+			// Allow any Vercel subdomain
+			if strings.HasSuffix(origin, ".vercel.app") && strings.HasPrefix(origin, "https://") {
+				return true
+			}
+			return false
+		},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
