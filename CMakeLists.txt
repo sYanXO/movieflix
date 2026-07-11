@@ -1,12 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(movieflix)
 
-# Starts database, checks readiness, and runs backend & frontend concurrently
+# Target that runs the dev.sh script
 add_custom_target(dev
-    COMMAND docker-compose up -d db
-    COMMAND bash -c "until docker exec moodflix_db pg_isready -U moodflix -d moodflix >/dev/null 2>&1; do echo 'Waiting for database to be ready...'; sleep 1; done"
-    COMMAND echo "Database is ready! Starting backend and frontend..."
-    COMMAND bash -c "trap 'kill 0' EXIT; (cd ${CMAKE_SOURCE_DIR}/backend && go run cmd/server/main.go) & (cd ${CMAKE_SOURCE_DIR}/frontend && npm run dev) & wait"
+    COMMAND ${CMAKE_SOURCE_DIR}/dev.sh
     USES_TERMINAL
     COMMENT "Starting MoodFlix in development mode..."
 )
