@@ -92,7 +92,7 @@ func main() {
 	{
 		apiGroup.POST("/question", api.QuestionHandler(llmClient))
 		apiGroup.POST("/recommend", api.RecommendHandler(recEngine))
-		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(llmClient, pool))
+		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(recEngine))
 		apiGroup.POST("/explain", api.ExplainHandler(llmClient, pool))
 		apiGroup.POST("/mood-breakdown", api.MoodBreakdownHandler(llmClient))
 		apiGroup.GET("/proxy-image", api.ProxyImageHandler(pool))
@@ -100,7 +100,7 @@ func main() {
 		// Shared remote session routes
 		apiGroup.POST("/sessions", api.CreateSessionHandler(pool))
 		apiGroup.GET("/sessions/:id", api.GetSessionHandler(pool))
-		apiGroup.POST("/sessions/:id/submit", api.SubmitSessionBHandler(llmClient, pool))
+		apiGroup.POST("/sessions/:id/submit", api.SubmitSessionBHandler(recEngine, pool))
 	}
 
 	log.Printf("🚀 MoodFlix backend running on :%s\n", port)

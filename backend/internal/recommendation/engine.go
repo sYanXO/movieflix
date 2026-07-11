@@ -18,6 +18,7 @@ import (
 // RecommendationEngine defines the seam for requesting recommendations.
 type RecommendationEngine interface {
 	GetRecommendations(ctx context.Context, answers map[string]string) (*models.RecommendResponse, error)
+	GetFriendRecommendations(ctx context.Context, answersA, answersB map[string]string) (*models.FriendRecommendResponse, error)
 }
 
 // DefaultRecommendationEngine implements the recommendations pipeline.
@@ -155,6 +156,158 @@ func (e *DefaultRecommendationEngine) GetRecommendations(ctx context.Context, an
 	}, nil
 }
 
+// GetFriendRecommendations merges two users' answers concurrently and generates joint recommendations.
+func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Context, answersA, answersB map[string]string) (*models.FriendRecommendResponse, error) {
+	if len(answersA) == 0 || len(answersB) == 0 {
+		return nil, fmt.Errorf("answers_a and answers_b cannot be empty")
+	}
+
+	var (
+		profileA      *models.MoodProfile
+		profileB      *models.MoodProfile
+		parseAErr     error
+		parseBErr     error
+		isRateLimited = false
+		wg            sync.WaitGroup
+	)
+
+	wg.Add(2)
+
+	// Goroutine A: Parse Person A's answers concurrently
+	go func() {
+		defer wg.Done()
+		profileA, parseAErr = e.llmClient.ParseMoodProfile(ctx, answersA)
+	}()
+
+	// Goroutine B: Parse Person B's answers concurrently
+	go func() {
+		defer wg.Done()
+		profileB, parseBErr = e.llmClient.ParseMoodProfile(ctx, answersB)
+	}()
+
+	wg.Wait()
+
+	// Handle Person A parse errors/rate limits
+	if parseAErr != nil {
+		errStr := strings.ToLower(parseAErr.Error())
+		if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") {
+			log.Println("⚠️ Rate-limited on profileA parse (friend mode), using heuristic")
+			profileA = parseMoodProfileHeuristic(answersA)
+			isRateLimited = true
+		} else {
+			return nil, fmt.Errorf("parsing profileA failed: %w", parseAErr)
+		}
+	}
+
+	// Handle Person B parse errors/rate limits
+	if parseBErr != nil {
+		errStr := strings.ToLower(parseBErr.Error())
+		if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") {
+			log.Println("⚠️ Rate-limited on profileB parse (friend mode), using heuristic")
+			profileB = parseMoodProfileHeuristic(answersB)
+			isRateLimited = true
+		} else {
+			return nil, fmt.Errorf("parsing profileB failed: %w", parseBErr)
+		}
+	}
+
+	// Merge profiles
+	var mergedProfile *models.MoodProfile
+	var mergedMood string
+	var mergeErr error
+
+	if isRateLimited {
+		mergedProfile, mergedMood = heuristicMerge(profileA, profileB)
+	} else {
+		mergedProfile, mergedMood, mergeErr = e.llmClient.MergeMoodProfiles(ctx, profileA, profileB)
+		if mergeErr != nil {
+			errStr := strings.ToLower(mergeErr.Error())
+			if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") {
+				log.Println("⚠️ Rate-limited on profile merge (friend mode), using heuristic merge")
+				mergedProfile, mergedMood = heuristicMerge(profileA, profileB)
+				isRateLimited = true
+			} else {
+				return nil, fmt.Errorf("profile merge failed: %w", mergeErr)
+			}
+		}
+	}
+
+	// Embed merged profile
+	var embedding []float32
+	var embedErr error
+	var candidates []models.Movie
+	var err error
+
+	profileText := buildProfileText(mergedProfile)
+	embedding, embedErr = e.llmClient.EmbedText(ctx, profileText)
+	if embedErr != nil {
+		errStr := strings.ToLower(embedErr.Error())
+		if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") {
+			log.Println("⚠️ Rate-limited on embed (friend mode), using genre fallback")
+			candidates, err = db.GenreAndRatingSearch(ctx, e.dbPool, mergedProfile.Genres, 50)
+			if err != nil {
+				return nil, fmt.Errorf("database fallback query failed: %w", err)
+			}
+			isRateLimited = true
+		} else {
+			return nil, fmt.Errorf("embedding failed: %w", embedErr)
+		}
+	} else {
+		// Vector search
+		candidates, err = db.VectorSearch(ctx, e.dbPool, embedding, 50)
+		if err != nil {
+			return nil, fmt.Errorf("vector search failed: %w", err)
+		}
+	}
+
+	if len(candidates) == 0 {
+		return &models.FriendRecommendResponse{
+			Recommendations: []models.Movie{},
+			MoodProfile:     mergedProfile,
+			MergedMood:      mergedMood,
+		}, nil
+	}
+
+	// Filter dealbreakers (union of dealbreakers from both profiles)
+	allDealbreakers := append(profileA.Dealbreakers, profileB.Dealbreakers...)
+	filtered := db.FilterDealbreakers(candidates, allDealbreakers)
+	if len(filtered) == 0 {
+		filtered = candidates
+	}
+
+	// ReRank using LLM
+	var top5 []models.Movie
+	if !isRateLimited {
+		top5, err = e.llmClient.ReRank(ctx, mergedProfile, filtered)
+		if err != nil {
+			// Fallback: return first 5 from vector search
+			top5 = filtered
+			if len(top5) > 5 {
+				top5 = top5[:5]
+			}
+		}
+	} else {
+		// Fallback: shuffle candidates and return top 5
+		toShuffle := filtered
+		if len(toShuffle) > 50 {
+			toShuffle = filtered[:50]
+		}
+		rand.Shuffle(len(toShuffle), func(i, j int) {
+			toShuffle[i], toShuffle[j] = toShuffle[j], toShuffle[i]
+		})
+		top5 = toShuffle
+		if len(top5) > 5 {
+			top5 = top5[:5]
+		}
+	}
+
+	return &models.FriendRecommendResponse{
+		Recommendations: top5,
+		MoodProfile:     mergedProfile,
+		MergedMood:      mergedMood,
+	}, nil
+}
+
 // CachedRecommendationEngine wraps an engine with in-memory caching.
 type CachedRecommendationEngine struct {
 	inner RecommendationEngine
@@ -196,6 +349,11 @@ func (c *CachedRecommendationEngine) GetRecommendations(ctx context.Context, ans
 	return response, nil
 }
 
+// GetFriendRecommendations delegates directly to inner engine (no caching for friend mode).
+func (c *CachedRecommendationEngine) GetFriendRecommendations(ctx context.Context, answersA, answersB map[string]string) (*models.FriendRecommendResponse, error) {
+	return c.inner.GetFriendRecommendations(ctx, answersA, answersB)
+}
+
 // buildRawAnswersText concatenates answers into a descriptive string.
 func buildRawAnswersText(answers map[string]string) string {
 	var sb strings.Builder
@@ -219,6 +377,23 @@ func getCacheKey(answers map[string]string) string {
 	var sb strings.Builder
 	for _, k := range keys {
 		sb.WriteString(fmt.Sprintf("%s:%s|", k, answers[k]))
+	}
+	return sb.String()
+}
+
+// buildProfileText creates an embeddable string representation of the mood profile.
+func buildProfileText(p *models.MoodProfile) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Mood: %s. ", p.Mood))
+	sb.WriteString(fmt.Sprintf("Pace: %s. ", p.Pace))
+	sb.WriteString(fmt.Sprintf("Tone: %s. ", p.Tone))
+	sb.WriteString(fmt.Sprintf("Ending: %s. ", p.Ending))
+	sb.WriteString(fmt.Sprintf("Focus required: %s. ", p.FocusRequired))
+	if len(p.Genres) > 0 {
+		sb.WriteString(fmt.Sprintf("Genres: %s. ", strings.Join(p.Genres, ", ")))
+	}
+	if len(p.KeywordsToBoost) > 0 {
+		sb.WriteString(fmt.Sprintf("Keywords: %s.", strings.Join(p.KeywordsToBoost, ", ")))
 	}
 	return sb.String()
 }
@@ -299,4 +474,54 @@ func parseMoodProfileHeuristic(answers map[string]string) *models.MoodProfile {
 	}
 
 	return profile
+}
+
+// heuristicMerge does a simple merge of two profiles without LLM (rate-limit fallback).
+func heuristicMerge(a, b *models.MoodProfile) (*models.MoodProfile, string) {
+	// Union genres, deduplicated
+	genreSet := map[string]bool{}
+	for _, g := range a.Genres {
+		genreSet[g] = true
+	}
+	for _, g := range b.Genres {
+		genreSet[g] = true
+	}
+	genres := []string{}
+	for g := range genreSet {
+		genres = append(genres, g)
+	}
+
+	// Union dealbreakers
+	dbSet := map[string]bool{}
+	for _, d := range a.Dealbreakers {
+		dbSet[d] = true
+	}
+	for _, d := range b.Dealbreakers {
+		dbSet[d] = true
+	}
+	dealbreakers := []string{}
+	for d := range dbSet {
+		dealbreakers = append(dealbreakers, d)
+	}
+
+	// Pace: if both agree use it, otherwise "any"
+	pace := "any"
+	if a.Pace == b.Pace {
+		pace = a.Pace
+	}
+
+	mergedMood := fmt.Sprintf("A shared %s experience for two", a.Mood)
+
+	return &models.MoodProfile{
+		Mood:            mergedMood,
+		Pace:            pace,
+		Tone:            a.Tone,
+		Ending:          "any",
+		Violence:        "low",
+		FocusRequired:  "any",
+		Genres:          genres,
+		Dealbreakers:    dealbreakers,
+		KeywordsToBoost: append(a.KeywordsToBoost, b.KeywordsToBoost...),
+		KeywordsToAvoid: append(a.KeywordsToAvoid, b.KeywordsToAvoid...),
+	}, mergedMood
 }
