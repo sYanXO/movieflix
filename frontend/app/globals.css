@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --color-background: #050505;
+  --color-foreground: #fafafa;
+  --color-surface: #0f0f11;
+  --color-surface-hover: #18181c;
+  --color-border: #262626;
+  
+  /* Cinematic Crimson/Rose */
+  --color-primary: #e11d48;
+  --color-primary-hover: #f43f5e;
+  --color-primary-glow: rgba(225, 29, 72, 0.4);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #262626;
+    border-radius: 3px;
+  }
+
+  /* Selection */
+  ::selection {
+    background: var(--color-primary-glow);
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Accessibility: Focus visible rings */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-primary);
+  }
+
+  /* Press active states */
+  button:active,
+  a:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  .cinematic-btn {
+    @apply relative inline-flex items-center justify-center font-bold tracking-wide transition-all duration-300;
+    font-family: var(--font-sans);
+    background: var(--color-primary);
+    color: #fff;
+    overflow: hidden;
+  }
+  
+  .cinematic-btn:hover {
+    background: var(--color-primary-hover);
+    box-shadow: 0 0 24px var(--color-primary-glow);
+  }
+
+  .cinematic-glass {
+    @apply bg-surface/80 backdrop-blur-md border border-border/50 shadow-2xl;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #fff, #a3a3a3);
+  }
+  
+  .gradient-text-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #f43f5e, #fda4af);
+  }
+}
