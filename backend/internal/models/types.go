@@ -115,3 +115,13 @@ type SessionResponse struct {
 	IsComplete      bool              `json:"is_complete"`
 }
 
+// GenerateQuizRequest is the request body for POST /api/generate-quiz.
+type GenerateQuizRequest struct {
+	StarterAnswer string `json:"starter_answer"`
+}
+
+// GenerateQuizResponse is returned by POST /api/generate-quiz.
+type GenerateQuizResponse struct {
+	Questions []QuestionResponse `json:"questions"`
+}
+

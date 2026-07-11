@@ -1,33 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getNextQuestion, getRecommendations, getFriendRecommendations, createSession, getSession, submitSession, QuestionResponse } from '@/lib/api';
+import { generateAdaptiveQuiz, getRecommendations, getFriendRecommendations, createSession, getSession, submitSession, QuestionResponse } from '@/lib/api';
 
 const MAX_QUESTIONS = 5;
 
-const OPTION_ICONS: Record<string, string> = {
-  'Exhausting': '🥵',
-  'Rollercoaster': '🎢',
-  'Chill': '😌',
-  'Productive': '📈',
-  'Match my chaos': '🌪️',
-  'Slow and steady': '🐢',
-  'Brain-off comfort': '🛋️',
-  'My brain is fried': '🍳',
-  'Ready to think': '🧠',
-  'Background noise': '📱',
-  'Uplifted': '✨',
-  'Mind-blown': '🤯',
-  'Emotionally destroyed': '😭',
-  'Gore': '🩸',
-  'Heavy romance': '💘',
-  'Subtitles': '🌐',
-  'Nope, anything goes': '🤙',
-};
-
-const MULTI_SELECT_KEYWORDS = ['dealbreaker', 'avoid', 'not okay', 'nope'];
+const MULTI_SELECT_KEYWORDS = ['dealbreaker', 'avoid', 'not okay', 'nope', 'never'];
 const isMultiSelectQuestion = (q: QuestionResponse) =>
   MULTI_SELECT_KEYWORDS.some(kw => q.question.toLowerCase().includes(kw)) ||
   q.options.some(o => o.toLowerCase().includes('gore') || o.toLowerCase().includes('romance') || o.toLowerCase().includes('subtitle'));
@@ -47,6 +27,7 @@ interface HistoryEntry {
   question: QuestionResponse;
   questionNum: number;
   answers: Record<string, string>;
+  upcoming: QuestionResponse[];
 }
 
 // ─── Local Handoff Screen (Pass the Phone) ───────────────────────
@@ -112,7 +93,6 @@ function HandoffChoiceScreen({
       </div>
 
       <div className="flex flex-col gap-4 w-full">
-        {/* Pass the phone */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -126,7 +106,6 @@ function HandoffChoiceScreen({
           </div>
         </motion.button>
 
-        {/* Remote Sharing */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -236,6 +215,7 @@ function QuizInner() {
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentQ, setCurrentQ] = useState<QuestionResponse | null>(null);
+  const [upcomingQuestions, setUpcomingQuestions] = useState<QuestionResponse[]>([]);
   const [questionNum, setQuestionNum] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -272,8 +252,12 @@ function QuizInner() {
       }
       
       try {
-        const q = await getNextQuestion({});
-        setCurrentQ(q);
+        const starter: QuestionResponse = {
+          question: "How would you describe your week so far?",
+          options: ["🥵 Exhausting", "🎢 Rollercoaster", "😌 Chill", "📈 Productive"],
+          is_final: false
+        };
+        setCurrentQ(starter);
         setQuestionNum(1);
       } catch (e) {
         setError((e as Error).message);
@@ -318,14 +302,28 @@ function QuizInner() {
     setError(null);
     setSelectedOption(null);
     setMultiSelected(new Set());
+    
     try {
-      const q = await getNextQuestion(currentAnswers);
-      if (q.is_final) {
-        await handleFinal(currentAnswers);
-        return;
+      if (questionNum === 1) {
+        // Single LLM call to generate the rest of the custom quiz
+        const res = await generateAdaptiveQuiz(currentAnswers["q1"]);
+        setUpcomingQuestions(res.questions);
+        if (res.questions.length > 0) {
+          setCurrentQ(res.questions[0]);
+          setQuestionNum(2);
+        } else {
+          await handleFinal(currentAnswers);
+        }
+      } else {
+        // Pop the next generated question from local state
+        const nextIndex = questionNum - 1;
+        if (nextIndex < upcomingQuestions.length) {
+          setCurrentQ(upcomingQuestions[nextIndex]);
+          setQuestionNum(prev => prev + 1);
+        } else {
+          await handleFinal(currentAnswers);
+        }
       }
-      setCurrentQ(q);
-      setQuestionNum(prev => prev + 1);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -335,7 +333,6 @@ function QuizInner() {
 
   const handleFinal = async (finalAnswers: Record<string, string>) => {
     if (isFriendMode && friendPerson === 'A') {
-      // Person A done — save answers, show handoff choice screen
       sessionStorage.setItem('moodflix_answers_a', JSON.stringify(finalAnswers));
       setAnswersA(finalAnswers);
       setShowHandoffChoice(true);
@@ -344,19 +341,16 @@ function QuizInner() {
       return;
     }
 
-    // Solo or Person B → fetch recommendations
     setIsSubmitting(true);
     try {
       if (isFriendMode && friendPerson === 'B') {
         if (sessionId) {
-          // Remote submit
           const data = await submitSession(sessionId, finalAnswers);
           sessionStorage.setItem('moodflix_results', JSON.stringify(data));
           sessionStorage.setItem('moodflix_answers', JSON.stringify(finalAnswers));
           sessionStorage.setItem('moodflix_friend_mode', 'true');
           sessionStorage.setItem('moodflix_merged_mood', data.merged_mood ?? '');
         } else {
-          // Local submit
           const storedA = sessionStorage.getItem('moodflix_answers_a');
           const aAnswers = storedA ? JSON.parse(storedA) : answersA;
           const data = await getFriendRecommendations(aAnswers, finalAnswers);
@@ -413,12 +407,21 @@ function QuizInner() {
     setHistory([]);
     setQuestionNum(0);
     setCurrentQ(null);
-    fetchNextQuestion({});
+    setUpcomingQuestions([]);
+    
+    // Reset to starter question
+    const starter: QuestionResponse = {
+      question: "How would you describe your week so far?",
+      options: ["🥵 Exhausting", "🎢 Rollercoaster", "😌 Chill", "📈 Productive"],
+      is_final: false
+    };
+    setCurrentQ(starter);
+    setQuestionNum(1);
   };
 
   const handleAnswer = async (option: string) => {
     if (!currentQ) return;
-    setHistory(prev => [...prev, { question: currentQ, questionNum, answers }]);
+    setHistory(prev => [...prev, { question: currentQ, questionNum, answers, upcoming: upcomingQuestions }]);
     setSelectedOption(option);
     await new Promise(r => setTimeout(r, 200));
     const qKey = `q${questionNum}`;
@@ -440,7 +443,7 @@ function QuizInner() {
 
   const submitMultiSelect = async () => {
     if (!currentQ) return;
-    setHistory(prev => [...prev, { question: currentQ, questionNum, answers }]);
+    setHistory(prev => [...prev, { question: currentQ, questionNum, answers, upcoming: upcomingQuestions }]);
     const value = multiSelected.size === 0 ? 'Nope, anything goes' : Array.from(multiSelected).join(', ');
     const qKey = `q${questionNum}`;
     const newAnswers = { ...answers, [qKey]: value };
@@ -455,6 +458,7 @@ function QuizInner() {
     setCurrentQ(prev.question);
     setQuestionNum(prev.questionNum);
     setAnswers(prev.answers);
+    setUpcomingQuestions(prev.upcoming);
     setSelectedOption(null);
     setMultiSelected(new Set());
     setError(null);
@@ -478,10 +482,12 @@ function QuizInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQ, isLoading, isSubmitting, error, isMulti, multiSelected, showHandoff, showHandoffChoice, isFriendWaiting]);
 
-  const progressPercent = Math.min(((questionNum - 1) / MAX_QUESTIONS) * 100, 100);
+  const maxTotalQuestions = Math.max(MAX_QUESTIONS, upcomingQuestions.length + 1);
+  const progressPercent = Math.min(((questionNum - 1) / maxTotalQuestions) * 100, 100);
+  
   const loadingText = isSubmitting
     ? 'Finding your films...'
-    : questionNum === 0 ? 'Getting started...' : 'One moment...';
+    : questionNum === 1 ? 'Reading your vibe...' : 'One moment...';
 
   const personLabel = isFriendMode
     ? (friendPerson === 'A' ? 'Person A' : 'Person B')
@@ -580,7 +586,7 @@ function QuizInner() {
             >
               <div className="flex flex-col gap-3">
                 <span className="text-primary/80 text-xs font-bold uppercase tracking-widest">
-                  Question {questionNum} of {MAX_QUESTIONS}
+                  Question {questionNum} of {maxTotalQuestions}
                   {personLabel && <span className="ml-2 text-primary/50">· {personLabel}</span>}
                 </span>
                 <h2 className="font-display text-3xl sm:text-4xl font-black leading-tight text-balance text-foreground">
@@ -593,7 +599,6 @@ function QuizInner() {
 
               <div className="flex flex-col gap-3">
                 {currentQ.options.map((option, i) => {
-                  const icon = OPTION_ICONS[option] ?? '•';
                   const isSelected = isMulti ? multiSelected.has(option) : selectedOption === option;
                   return (
                     <motion.button
@@ -612,7 +617,6 @@ function QuizInner() {
                       }`}
                     >
                       <span className="text-[10px] font-bold w-5 text-center flex-shrink-0 opacity-30 font-mono">{i + 1}</span>
-                      <span className="text-2xl w-8 text-center flex-shrink-0 opacity-80">{icon}</span>
                       <span className="flex-1">{option}</span>
                       {isMulti ? (
                         <span className={`w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-white border-white' : 'border-white/20'}`}>
@@ -653,7 +657,6 @@ function QuizInner() {
   );
 }
 
-// Wrap in Suspense for useSearchParams
 export default function QuizPage() {
   return (
     <Suspense>

@@ -77,8 +77,12 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
-export function getNextQuestion(answers: Record<string, string>): Promise<QuestionResponse> {
-  return post<QuestionResponse>('/api/question', { answers });
+export interface GenerateQuizResponse {
+  questions: QuestionResponse[];
+}
+
+export function generateAdaptiveQuiz(starterAnswer: string): Promise<GenerateQuizResponse> {
+  return post<GenerateQuizResponse>('/api/generate-quiz', { starter_answer: starterAnswer });
 }
 
 export function getRecommendations(answers: Record<string, string>): Promise<RecommendResponse> {

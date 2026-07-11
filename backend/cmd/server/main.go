@@ -90,7 +90,7 @@ func main() {
 	// API routes
 	apiGroup := r.Group("/api")
 	{
-		apiGroup.POST("/question", api.QuestionHandler(llmClient))
+		apiGroup.POST("/generate-quiz", api.GenerateQuizHandler(llmClient))
 		apiGroup.POST("/recommend", api.RecommendHandler(recEngine))
 		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(recEngine))
 		apiGroup.POST("/explain", api.ExplainHandler(llmClient, pool))

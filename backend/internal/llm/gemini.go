@@ -57,57 +57,42 @@ func stripJSON(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// NextQuestion asks Gemini to decide the next adaptive question based on prior answers.
-// Returns is_final=true when it has enough confidence to recommend.
-func (c *Client) NextQuestion(ctx context.Context, answers map[string]string) (*models.QuestionResponse, error) {
-	answersJSON, _ := json.Marshal(answers)
+// GenerateAdaptiveQuiz generates a set of 3 highly customized movie-mood questions based on the user's initial answer.
+func (c *Client) GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error) {
+	prompt := fmt.Sprintf(`The user was asked: "How would you describe your week so far?"
+They answered: "%s"
 
-	prompt := fmt.Sprintf(`You are helping a user find the perfect movie by asking adaptive mood questions.
+Generate exactly 3 highly creative, personalized, multi-choice questions to narrow down what movie they should watch. 
+Each question should have 3-4 options. 
 
-Prior answers (may be empty for the first question): %s
-
-Question bank (use EXACTLY these questions and options in order, but you may skip ahead or stop early):
-
-Q1: "How would you describe your week so far?"
-Options: ["Exhausting", "Rollercoaster", "Chill", "Productive"]
-
-Q2: "What kind of energy do you need tonight?"
-Options: ["Match my chaos", "Slow and steady", "Brain-off comfort"]
-
-Q3: "How much mental capacity do you have left?"
-Options: ["My brain is fried", "Ready to think", "Background noise"]
-
-Q4: "How do you want to feel when the credits roll?"
-Options: ["Uplifted", "Mind-blown", "Emotionally destroyed"]
-
-Q5: "What do we absolutely want to avoid today?"
-Options: ["Gore", "Heavy romance", "Subtitles", "Nope, anything goes"]
-
-Rules:
-- If no answers yet, always return Q1.
-- After 2+ answers, decide if you have enough to make good recommendations. If yes, set is_final to true.
-- Never repeat a question already answered.
-- Always stop after Q5 at most.
+CRITICAL UI RULE: You MUST prefix every single option with a relevant emoji. For example: "🥷 Fast-paced action", "🧠 Make me think". Do not forget the emoji.
 
 Respond ONLY with valid JSON (no markdown):
-{
-  "question": "exact question text",
-  "options": ["option1", "option2", ...],
-  "is_final": false
-}
-
-If is_final is true, set question and options to empty strings/arrays.`, string(answersJSON))
+[
+  {
+    "question": "exact question text",
+    "options": ["emoji option1", "emoji option2", ...],
+    "is_final": false
+  },
+  ...
+]`, starterAnswer)
 
 	raw, err := c.generate(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp models.QuestionResponse
-	if err := json.Unmarshal([]byte(stripJSON(raw)), &resp); err != nil {
-		return nil, fmt.Errorf("parsing question response: %w\nraw: %s", err, raw)
+	var questions []models.QuestionResponse
+	if err := json.Unmarshal([]byte(stripJSON(raw)), &questions); err != nil {
+		return nil, fmt.Errorf("parsing adaptive quiz response: %w\nraw: %s", err, raw)
 	}
-	return &resp, nil
+
+	// Safety fallback
+	if len(questions) == 0 {
+		return nil, fmt.Errorf("no questions generated")
+	}
+
+	return questions, nil
 }
 
 // ParseMoodProfile converts user answers to a structured mood profile.
