@@ -12,7 +12,9 @@ import (
 	"moodflix/internal/api"
 	"moodflix/internal/db"
 	"moodflix/internal/llm"
+	"moodflix/internal/recommendation"
 )
+
 
 func main() {
 	// Load .env file (ignore error in production where env vars are set directly)
@@ -55,8 +57,13 @@ func main() {
 	}
 	log.Println("✅ Gemini client ready")
 
+	// Init Recommendation Engine (with cache)
+	baseEngine := recommendation.NewEngine(llmClient, pool)
+	recEngine := recommendation.NewCachedEngine(baseEngine)
+
 	// Setup Gin router
 	r := gin.Default()
+
 
 	// CORS: allow Next.js dev server and Vercel deployments
 	r.Use(cors.New(cors.Config{
@@ -84,7 +91,7 @@ func main() {
 	apiGroup := r.Group("/api")
 	{
 		apiGroup.POST("/question", api.QuestionHandler(llmClient))
-		apiGroup.POST("/recommend", api.RecommendHandler(llmClient, pool))
+		apiGroup.POST("/recommend", api.RecommendHandler(recEngine))
 		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(llmClient, pool))
 		apiGroup.POST("/explain", api.ExplainHandler(llmClient, pool))
 		apiGroup.POST("/mood-breakdown", api.MoodBreakdownHandler(llmClient))
