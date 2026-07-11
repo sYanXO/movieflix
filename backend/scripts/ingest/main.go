@@ -157,7 +157,8 @@ func main() {
 
 	log.Println("🎬 Starting ingestion...")
 
-	for _, movie := range allMovies {
+	for i := 0; i < len(allMovies); i++ {
+		movie := allMovies[i]
 		idStr := strconv.Itoa(movie.TmdbID)
 		if progress.ProcessedIDs[idStr] {
 			continue
@@ -172,6 +173,14 @@ func main() {
 		// Embed
 		embedding, err := llmClient.EmbedText(ctx, embText)
 		if err != nil {
+			errStr := strings.ToLower(err.Error())
+			if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") || strings.Contains(errStr, "exhausted") {
+				log.Printf("⚠️ Rate limit hit for %q. Waiting 25 seconds before retrying...", movie.Title)
+				time.Sleep(25 * time.Second)
+				i-- // Decrement index to retry this movie on the next iteration
+				continue
+			}
+
 			log.Printf("⚠️  Embed error for %q: %v", movie.Title, err)
 			errCount++
 			if errCount > 10 {
