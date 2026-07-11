@@ -20,3 +20,9 @@ Thumbs.db
 .agents/
 .gemini/
 
+# CMake build files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
