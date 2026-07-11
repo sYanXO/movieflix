@@ -1,0 +1,22 @@
+# Environment files
+**/.env
+**/.env.local
+**/ingest_progress.json
+
+# Build outputs
+backend/bin/
+frontend/.next/
+frontend/out/
+node_modules/
+
+# Data files (large)
+backend/data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Agent files
+.agents/
+.gemini/
+

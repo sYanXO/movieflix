@@ -1,0 +1,17 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: moodflix_db
+    environment:
+      POSTGRES_DB: moodflix
+      POSTGRES_USER: moodflix
+      POSTGRES_PASSWORD: moodflix
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+volumes:
+  pgdata:

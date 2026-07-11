@@ -1,0 +1,8 @@
+# Backend build artifacts
+/bin/
+# Data files (large, not committed)
+/data/
+# Environment
+.env
+# Progress file from ingest
+ingest_progress.json
