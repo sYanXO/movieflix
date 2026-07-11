@@ -30,5 +30,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   answers         JSONB,
   mood_profile    JSONB,
   recommendations INT[],
-  user_notes      TEXT
+  user_notes      TEXT,
+  answers_a       JSONB,
+  answers_b       JSONB,
+  merged_mood     TEXT
 );

@@ -93,3 +93,25 @@ type FriendRecommendResponse struct {
 	MoodProfile     *MoodProfile `json:"mood_profile"`
 	MergedMood      string       `json:"merged_mood"`
 }
+
+// CreateSessionRequest is the request body for POST /api/sessions.
+type CreateSessionRequest struct {
+	AnswersA map[string]string `json:"answers_a"`
+}
+
+// SubmitSessionRequest is the request body for POST /api/sessions/:id/submit.
+type SubmitSessionRequest struct {
+	AnswersB map[string]string `json:"answers_b"`
+}
+
+// SessionResponse represents the remote sharing session status.
+type SessionResponse struct {
+	ID              string            `json:"id"`
+	AnswersA        map[string]string `json:"answers_a,omitempty"`
+	AnswersB        map[string]string `json:"answers_b,omitempty"`
+	MergedMood      string            `json:"merged_mood,omitempty"`
+	MoodProfile     *MoodProfile      `json:"mood_profile,omitempty"`
+	Recommendations []Movie           `json:"recommendations,omitempty"`
+	IsComplete      bool              `json:"is_complete"`
+}
+

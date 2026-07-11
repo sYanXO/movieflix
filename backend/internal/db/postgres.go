@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   recommendations INT[],
   user_notes      TEXT
 );
+
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS answers_a JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS answers_b JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS merged_mood TEXT;
 `
 
 // NewPool creates a pgxpool connection pool from a DSN string.

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getNextQuestion, getRecommendations, getFriendRecommendations, QuestionResponse } from '@/lib/api';
+import { getNextQuestion, getRecommendations, getFriendRecommendations, createSession, getSession, submitSession, QuestionResponse } from '@/lib/api';
 
 const MAX_QUESTIONS = 5;
 
@@ -48,7 +48,7 @@ interface HistoryEntry {
   answers: Record<string, string>;
 }
 
-// ─── Handoff Screen ───────────────────────────────────────────────
+// ─── Local Handoff Screen (Pass the Phone) ───────────────────────
 function HandoffScreen({ onContinue }: { onContinue: () => void }) {
   return (
     <motion.div
@@ -83,18 +83,155 @@ function HandoffScreen({ onContinue }: { onContinue: () => void }) {
   );
 }
 
+// ─── Handoff Choice Screen (Same vs Different Device) ────────────
+function HandoffChoiceScreen({
+  onLocal,
+  onRemote,
+  isLoading,
+}: {
+  onLocal: () => void;
+  onRemote: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      className="flex flex-col items-center text-center gap-8"
+    >
+      <div className="text-7xl">🎬</div>
+      <div className="flex flex-col gap-3">
+        <h2 className="font-display text-3xl font-black text-white">
+          Person A is done!
+        </h2>
+        <p className="text-white/50 text-base max-w-sm leading-relaxed">
+          How would you like your friend (Person B) to take the quiz and merge your vibes?
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-4 w-full">
+        {/* Pass the phone */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onLocal}
+          className="w-full text-left px-6 py-5 rounded-2xl border bg-surface border-border/50 text-foreground/80 hover:bg-surface-hover hover:border-border hover:text-foreground transition-all duration-300 flex items-center gap-4 font-semibold text-lg"
+        >
+          <span className="text-2xl">📱</span>
+          <div className="flex flex-col text-left">
+            <span>Pass the phone</span>
+            <span className="text-xs text-white/40 font-normal">Answer sequentially on this same device</span>
+          </div>
+        </motion.button>
+
+        {/* Remote Sharing */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onRemote}
+          disabled={isLoading}
+          className="w-full text-left px-6 py-5 rounded-2xl border bg-surface border-border/50 text-foreground/80 hover:bg-surface-hover hover:border-border hover:text-foreground transition-all duration-300 flex items-center gap-4 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="text-2xl">🔗</span>
+          <div className="flex flex-col text-left">
+            <span>Share a session link</span>
+            <span className="text-xs text-white/40 font-normal">
+              {isLoading ? 'Creating session...' : 'Send a link to your friend to play on their device'}
+            </span>
+          </div>
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Remote Share Screen (Waiting Screen) ───────────────────────
+function RemoteShareScreen({
+  sessionId,
+  onCopy,
+  copied,
+}: {
+  sessionId: string;
+  onCopy: () => void;
+  copied: boolean;
+}) {
+  const shareUrl = `${window.location.origin}/quiz?session_id=${sessionId}&mode=friend&person=B`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      className="flex flex-col items-center text-center gap-8"
+    >
+      <div className="text-7xl">💬</div>
+      <div className="flex flex-col gap-3">
+        <h2 className="font-display text-3xl font-black text-white">
+          Send link to friend
+        </h2>
+        <p className="text-white/50 text-base max-w-sm leading-relaxed">
+          Copy and share this link. Once they complete the quiz, this page will automatically redirect to your merged results!
+        </p>
+      </div>
+
+      <div className="w-full flex flex-col gap-3">
+        <div className="relative flex items-center bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white/60 font-mono select-all overflow-x-auto whitespace-nowrap hide-scrollbar">
+          {shareUrl}
+        </div>
+        
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onCopy}
+          className="cinematic-btn w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2"
+        >
+          {copied ? (
+            <>
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Link Copied!
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              Copy Session Link
+            </>
+          )}
+        </motion.button>
+      </div>
+
+      <div className="flex items-center gap-3 py-4">
+        <div className="relative w-5 h-5 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+        </div>
+        <span className="text-xs font-semibold text-foreground/50 tracking-wider uppercase">
+          Live Status: Waiting for Friend...
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Quiz Inner (uses search params) ─────────────────────────────
 function QuizInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   // Friend mode state
-  const isFriendMode = searchParams.get('mode') === 'friend';
-  const [friendPerson, setFriendPerson] = useState<'A' | 'B'>(
-    (searchParams.get('person') as 'A' | 'B') ?? (isFriendMode ? 'A' : 'A')
-  );
+  const sessionIdParam = searchParams.get('session_id');
+  const isFriendMode = searchParams.get('mode') === 'friend' || !!sessionIdParam;
+  
+  const [friendPerson, setFriendPerson] = useState<'A' | 'B'>('A');
   const [answersA, setAnswersA] = useState<Record<string, string>>({});
   const [showHandoff, setShowHandoff] = useState(false);
+  const [showHandoffChoice, setShowHandoffChoice] = useState(false);
+  const [isFriendWaiting, setIsFriendWaiting] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentQ, setCurrentQ] = useState<QuestionResponse | null>(null);
@@ -107,14 +244,73 @@ function QuizInner() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
-    // If arriving via friend link (person=B already set), load answersA from sessionStorage
-    if (isFriendMode && friendPerson === 'B') {
-      const stored = sessionStorage.getItem('moodflix_answers_a');
-      if (stored) setAnswersA(JSON.parse(stored));
-    }
-    fetchNextQuestion({});
+    const loadQuiz = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      const sessionParam = searchParams.get('session_id');
+      const personParam = searchParams.get('person') as 'A' | 'B';
+      
+      if (sessionParam) {
+        setSessionId(sessionParam);
+        setFriendPerson('B');
+        try {
+          const session = await getSession(sessionParam);
+          setAnswersA(session.answers_a ?? {});
+        } catch {
+          setError('Invalid or expired remote sharing session link. Please start a new session.');
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        setFriendPerson(personParam ?? (isFriendMode ? 'A' : 'A'));
+        if (isFriendMode && personParam === 'B') {
+          const stored = sessionStorage.getItem('moodflix_answers_a');
+          if (stored) setAnswersA(JSON.parse(stored));
+        }
+      }
+      
+      try {
+        const q = await getNextQuestion({});
+        setCurrentQ(q);
+        setQuestionNum(1);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadQuiz();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Polling logic for Person A waiting screen
+  useEffect(() => {
+    if (!isFriendWaiting || !sessionId) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const session = await getSession(sessionId);
+        if (session.is_complete) {
+          clearInterval(interval);
+          sessionStorage.setItem('moodflix_results', JSON.stringify({
+            recommendations: session.recommendations,
+            mood_profile: session.mood_profile,
+            merged_mood: session.merged_mood
+          }));
+          sessionStorage.setItem('moodflix_answers', JSON.stringify(session.answers_a));
+          sessionStorage.setItem('moodflix_friend_mode', 'true');
+          sessionStorage.setItem('moodflix_merged_mood', session.merged_mood ?? '');
+          router.push('/results');
+        }
+      } catch (e) {
+        console.error('Error polling session status:', e);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isFriendWaiting, sessionId, router]);
 
   const fetchNextQuestion = async (currentAnswers: Record<string, string>) => {
     setIsLoading(true);
@@ -138,10 +334,10 @@ function QuizInner() {
 
   const handleFinal = async (finalAnswers: Record<string, string>) => {
     if (isFriendMode && friendPerson === 'A') {
-      // Person A done — save answers, show handoff
+      // Person A done — save answers, show handoff choice screen
       sessionStorage.setItem('moodflix_answers_a', JSON.stringify(finalAnswers));
       setAnswersA(finalAnswers);
-      setShowHandoff(true);
+      setShowHandoffChoice(true);
       setIsLoading(false);
       setIsSubmitting(false);
       return;
@@ -151,13 +347,23 @@ function QuizInner() {
     setIsSubmitting(true);
     try {
       if (isFriendMode && friendPerson === 'B') {
-        const storedA = sessionStorage.getItem('moodflix_answers_a');
-        const aAnswers = storedA ? JSON.parse(storedA) : answersA;
-        const data = await getFriendRecommendations(aAnswers, finalAnswers);
-        sessionStorage.setItem('moodflix_results', JSON.stringify(data));
-        sessionStorage.setItem('moodflix_answers', JSON.stringify(finalAnswers));
-        sessionStorage.setItem('moodflix_friend_mode', 'true');
-        sessionStorage.setItem('moodflix_merged_mood', data.merged_mood ?? '');
+        if (sessionId) {
+          // Remote submit
+          const data = await submitSession(sessionId, finalAnswers);
+          sessionStorage.setItem('moodflix_results', JSON.stringify(data));
+          sessionStorage.setItem('moodflix_answers', JSON.stringify(finalAnswers));
+          sessionStorage.setItem('moodflix_friend_mode', 'true');
+          sessionStorage.setItem('moodflix_merged_mood', data.merged_mood ?? '');
+        } else {
+          // Local submit
+          const storedA = sessionStorage.getItem('moodflix_answers_a');
+          const aAnswers = storedA ? JSON.parse(storedA) : answersA;
+          const data = await getFriendRecommendations(aAnswers, finalAnswers);
+          sessionStorage.setItem('moodflix_results', JSON.stringify(data));
+          sessionStorage.setItem('moodflix_answers', JSON.stringify(finalAnswers));
+          sessionStorage.setItem('moodflix_friend_mode', 'true');
+          sessionStorage.setItem('moodflix_merged_mood', data.merged_mood ?? '');
+        }
       } else {
         const data = await getRecommendations(finalAnswers);
         sessionStorage.setItem('moodflix_results', JSON.stringify(data));
@@ -169,6 +375,34 @@ function QuizInner() {
       setError((e as Error).message);
       setIsSubmitting(false);
     }
+  };
+
+  const handleSelectLocal = () => {
+    setShowHandoffChoice(false);
+    setShowHandoff(true);
+  };
+
+  const handleSelectRemote = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await createSession(answersA);
+      setSessionId(res.session_id);
+      setShowHandoffChoice(false);
+      setIsFriendWaiting(true);
+    } catch (e) {
+      setError('Failed to create remote sharing session. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!sessionId) return;
+    const shareUrl = `${window.location.origin}/quiz?session_id=${sessionId}&mode=friend&person=B`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
   };
 
   const startPersonB = () => {
@@ -228,7 +462,7 @@ function QuizInner() {
   const isMulti = currentQ ? isMultiSelectQuestion(currentQ) : false;
 
   useEffect(() => {
-    if (!currentQ || isLoading || isSubmitting || error || showHandoff) return;
+    if (!currentQ || isLoading || isSubmitting || error || showHandoff || showHandoffChoice || isFriendWaiting) return;
     const handleKey = (e: KeyboardEvent) => {
       const num = parseInt(e.key);
       if (!isNaN(num) && num >= 1 && num <= currentQ.options.length) {
@@ -241,14 +475,13 @@ function QuizInner() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQ, isLoading, isSubmitting, error, isMulti, multiSelected, showHandoff]);
+  }, [currentQ, isLoading, isSubmitting, error, isMulti, multiSelected, showHandoff, showHandoffChoice, isFriendWaiting]);
 
   const progressPercent = Math.min(((questionNum - 1) / MAX_QUESTIONS) * 100, 100);
   const loadingText = isSubmitting
     ? 'Finding your films...'
     : questionNum === 0 ? 'Getting started...' : 'One moment...';
 
-  // Friend mode label
   const personLabel = isFriendMode
     ? (friendPerson === 'A' ? 'Person A' : 'Person B')
     : null;
@@ -261,7 +494,6 @@ function QuizInner() {
       />
 
       <div className="relative z-10 w-full max-w-lg flex flex-col gap-10">
-        {/* Top Nav */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <button
@@ -282,7 +514,7 @@ function QuizInner() {
             </div>
           </div>
 
-          {!showHandoff && (
+          {!showHandoff && !showHandoffChoice && !isFriendWaiting && (
             <div className="w-full h-1 bg-surface rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-primary"
@@ -295,13 +527,29 @@ function QuizInner() {
         </div>
 
         <AnimatePresence mode="wait">
-          {/* Handoff screen */}
+          {showHandoffChoice && (
+            <HandoffChoiceScreen
+              key="handoff-choice"
+              onLocal={handleSelectLocal}
+              onRemote={handleSelectRemote}
+              isLoading={isSubmitting}
+            />
+          )}
+
+          {isFriendWaiting && sessionId && (
+            <RemoteShareScreen
+              key="remote-share"
+              sessionId={sessionId}
+              onCopy={handleCopyLink}
+              copied={copied}
+            />
+          )}
+
           {showHandoff && (
             <HandoffScreen key="handoff" onContinue={startPersonB} />
           )}
 
-          {/* Loading */}
-          {!showHandoff && (isLoading || isSubmitting) && (
+          {!showHandoff && !showHandoffChoice && !isFriendWaiting && (isLoading || isSubmitting) && (
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center gap-6 py-32">
               <div className="relative w-12 h-12 flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
@@ -311,8 +559,7 @@ function QuizInner() {
             </motion.div>
           )}
 
-          {/* Error */}
-          {!showHandoff && error && !isLoading && (
+          {!showHandoff && !showHandoffChoice && !isFriendWaiting && error && !isLoading && (
             <motion.div key="error" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="cinematic-glass rounded-2xl p-8 text-center border-red-500/20">
               <div className="text-4xl mb-4">⚠️</div>
               <h3 className="font-display font-bold text-xl mb-3 text-foreground">Something went wrong</h3>
@@ -321,8 +568,7 @@ function QuizInner() {
             </motion.div>
           )}
 
-          {/* Question card */}
-          {!showHandoff && !isLoading && !isSubmitting && !error && currentQ && (
+          {!showHandoff && !showHandoffChoice && !isFriendWaiting && !isLoading && !isSubmitting && !error && currentQ && (
             <motion.div
               key={questionNum}
               initial={{ opacity: 0, x: 20 }}
@@ -344,7 +590,6 @@ function QuizInner() {
                 )}
               </div>
 
-              {/* Options */}
               <div className="flex flex-col gap-3">
                 {currentQ.options.map((option, i) => {
                   const icon = OPTION_ICONS[option] ?? '•';
@@ -361,8 +606,8 @@ function QuizInner() {
                       onClick={() => isMulti ? toggleMulti(option) : handleAnswer(option)}
                       className={`w-full text-left px-6 py-5 rounded-2xl border transition-all duration-300 flex items-center gap-4 font-semibold text-lg ${
                         isSelected
-                          ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(225,29,72,0.3)]'
-                          : 'bg-surface border-border/50 text-foreground/80 hover:bg-surface-hover hover:border-border hover:text-foreground'
+                           ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(225,29,72,0.3)]'
+                           : 'bg-surface border-border/50 text-foreground/80 hover:bg-surface-hover hover:border-border hover:text-foreground'
                       }`}
                     >
                       <span className="text-[10px] font-bold w-5 text-center flex-shrink-0 opacity-30 font-mono">{i + 1}</span>
@@ -386,7 +631,6 @@ function QuizInner() {
                 })}
               </div>
 
-              {/* Multi-select confirm */}
               {isMulti && (
                 <motion.button
                   initial={{ opacity: 0, y: 8 }}

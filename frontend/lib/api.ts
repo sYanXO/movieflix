@@ -54,6 +54,16 @@ export interface FriendRecommendResponse {
   merged_mood: string;
 }
 
+export interface SessionResponse {
+  id: string;
+  answers_a: Record<string, string>;
+  answers_b: Record<string, string>;
+  merged_mood?: string;
+  mood_profile?: MoodProfile;
+  recommendations?: Movie[];
+  is_complete: boolean;
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
@@ -97,3 +107,22 @@ export function getExplanation(
     user_answers: userAnswers,
   });
 }
+
+export function createSession(answersA: Record<string, string>): Promise<{ session_id: string }> {
+  return post('/api/sessions', { answers_a: answersA });
+}
+
+export function getSession(sessionId: string): Promise<SessionResponse> {
+  return fetch(`${BASE}/api/sessions/${sessionId}`).then(res => {
+    if (!res.ok) throw new Error('Failed to fetch session');
+    return res.json();
+  });
+}
+
+export function submitSession(
+  sessionId: string,
+  answersB: Record<string, string>
+): Promise<FriendRecommendResponse> {
+  return post(`/api/sessions/${sessionId}/submit`, { answers_b: answersB });
+}
+
