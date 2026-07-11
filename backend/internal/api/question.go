@@ -51,22 +51,22 @@ func getStaticQuizFallback() []models.QuestionResponse {
 	return []models.QuestionResponse{
 		{
 			Question: "What kind of energy do you need tonight?",
-			Options:  []string{"🌪️ Match my chaos", "🐢 Slow and steady", "🛋️ Brain-off comfort"},
+			Options:  []string{"Match my chaos", "Slow and steady", "Brain-off comfort"},
 			IsFinal:  false,
 		},
 		{
 			Question: "How much mental capacity do you have left?",
-			Options:  []string{"🍳 My brain is fried", "🧠 Ready to think", "📱 Background noise"},
+			Options:  []string{"My brain is fried", "Ready to think", "Background noise"},
 			IsFinal:  false,
 		},
 		{
 			Question: "How do you want to feel when the credits roll?",
-			Options:  []string{"✨ Uplifted", "🤯 Mind-blown", "😭 Emotionally destroyed"},
+			Options:  []string{"Uplifted", "Mind-blown", "Emotionally destroyed"},
 			IsFinal:  false,
 		},
 		{
 			Question: "What do we absolutely want to avoid today?",
-			Options:  []string{"🩸 Gore", "💘 Heavy romance", "🌐 Subtitles", "🤙 Nope, anything goes"},
+			Options:  []string{"Gore", "Heavy romance", "Subtitles", "Nope, anything goes"},
 			IsFinal:  false,
 		},
 	}

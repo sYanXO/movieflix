@@ -65,13 +65,11 @@ They answered: "%s"
 Generate exactly 3 highly creative, personalized, multi-choice questions to narrow down what movie they should watch. 
 Each question should have 3-4 options. 
 
-CRITICAL UI RULE: You MUST prefix every single option with a relevant emoji. For example: "🥷 Fast-paced action", "🧠 Make me think". Do not forget the emoji.
-
 Respond ONLY with valid JSON (no markdown):
 [
   {
     "question": "exact question text",
-    "options": ["emoji option1", "emoji option2", ...],
+    "options": ["option1", "option2", ...],
     "is_final": false
   },
   ...

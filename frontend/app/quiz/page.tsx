@@ -254,7 +254,7 @@ function QuizInner() {
       try {
         const starter: QuestionResponse = {
           question: "How would you describe your week so far?",
-          options: ["🥵 Exhausting", "🎢 Rollercoaster", "😌 Chill", "📈 Productive"],
+          options: ["Exhausting", "Rollercoaster", "Chill", "Productive"],
           is_final: false
         };
         setCurrentQ(starter);
@@ -412,7 +412,7 @@ function QuizInner() {
     // Reset to starter question
     const starter: QuestionResponse = {
       question: "How would you describe your week so far?",
-      options: ["🥵 Exhausting", "🎢 Rollercoaster", "😌 Chill", "📈 Productive"],
+      options: ["Exhausting", "Rollercoaster", "Chill", "Productive"],
       is_final: false
     };
     setCurrentQ(starter);

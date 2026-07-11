@@ -240,17 +240,20 @@ export default function LandingPage() {
           >
             <h1 className="font-display text-5xl sm:text-7xl md:text-[5.5rem] font-black tracking-tight leading-[1.05] text-balance text-foreground mb-6">
               Find the perfect movie for a <br className="hidden sm:block" />
-              <span className="text-primary inline-block min-w-[280px] sm:min-w-[400px] text-center mt-2">
-                <motion.span
-                  key={currentWordIndex}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -15 }}
-                  transition={{ duration: 0.4 }}
-                  className="inline-block"
-                >
-                  {MOOD_WORDS[currentWordIndex]}
-                </motion.span>
+              <span className="text-primary inline-grid items-center justify-items-center mt-2 mx-2">
+                {MOOD_WORDS.map((word, i) => (
+                  <motion.span
+                    key={word}
+                    initial={{ opacity: i === 0 ? 1 : 0, y: i === 0 ? 0 : 15 }}
+                    animate={{ opacity: i === currentWordIndex ? 1 : 0, y: i === currentWordIndex ? 0 : (i < currentWordIndex ? -15 : 15) }}
+                    transition={{ duration: 0.4 }}
+                    className="col-start-1 row-start-1"
+                    aria-hidden={i !== currentWordIndex}
+                    style={{ pointerEvents: i === currentWordIndex ? 'auto' : 'none' }}
+                  >
+                    {word}
+                  </motion.span>
+                ))}
               </span>
               <br /> night.
             </h1>
