@@ -418,58 +418,60 @@ func parseMoodProfileHeuristic(answers map[string]string) *models.MoodProfile {
 		return ""
 	}
 
-	q1 := strings.ToLower(getAns("q1", "What are you in the mood for?"))
-	if strings.Contains(q1, "brain") {
+	q1 := strings.ToLower(getAns("q1", "How would you describe your week so far?"))
+	if strings.Contains(q1, "exhausting") {
 		profile.Mood = "Lighthearted entertainment"
 		profile.Tone = "light, funny"
-		profile.Genres = []string{"Comedy", "Adventure", "Family"}
-	} else if strings.Contains(q1, "intense") {
+		profile.Genres = []string{"Comedy", "Family"}
+	} else if strings.Contains(q1, "rollercoaster") {
 		profile.Mood = "Tense thriller"
 		profile.Tone = "intense, thrilling"
-		profile.Genres = []string{"Action", "Thriller", "Crime"}
-	} else if strings.Contains(q1, "think") {
+		profile.Genres = []string{"Action", "Thriller"}
+	} else if strings.Contains(q1, "productive") {
 		profile.Mood = "Thought-provoking drama"
 		profile.Tone = "deep, intellectual"
 		profile.Genres = []string{"Drama", "Mystery", "Science Fiction"}
-	} else if strings.Contains(q1, "scare") {
-		profile.Mood = "Spooky horror"
-		profile.Tone = "scary, suspenseful"
-		profile.Genres = []string{"Horror", "Thriller"}
+	} else if strings.Contains(q1, "chill") {
+		profile.Mood = "General entertainment"
+		profile.Tone = "entertaining, slow burn"
+		profile.Genres = []string{"Drama", "Comedy", "Romance"}
 	} else {
 		profile.Mood = "General entertainment"
 		profile.Tone = "entertaining"
 		profile.Genres = []string{"Drama", "Comedy", "Action"}
 	}
 
-	q2 := strings.ToLower(getAns("q2", "Pace preference?"))
-	if strings.Contains(q2, "fast") {
+	q2 := strings.ToLower(getAns("q2", "What kind of energy do you need tonight?"))
+	if strings.Contains(q2, "chaos") {
 		profile.Pace = "fast"
 	} else if strings.Contains(q2, "slow") {
 		profile.Pace = "slow"
+	} else if strings.Contains(q2, "brain-off") {
+		profile.Pace = "any"
 	}
 
-	q3 := strings.ToLower(getAns("q3", "How much attention can you give?"))
-	if strings.Contains(q3, "full") {
+	q3 := strings.ToLower(getAns("q3", "How much mental capacity do you have left?"))
+	if strings.Contains(q3, "ready to think") {
 		profile.FocusRequired = "full"
-	} else if strings.Contains(q3, "half") || strings.Contains(q3, "phone") {
+	} else if strings.Contains(q3, "fried") || strings.Contains(q3, "background") {
 		profile.FocusRequired = "background"
 	}
 
-	q4 := strings.ToLower(getAns("q4", "Ending vibes?"))
-	if strings.Contains(q4, "happy") {
+	q4 := strings.ToLower(getAns("q4", "How do you want to feel when the credits roll?"))
+	if strings.Contains(q4, "uplifted") {
 		profile.Ending = "happy"
-	} else if strings.Contains(q4, "sad") || strings.Contains(q4, "dark") {
+	} else if strings.Contains(q4, "destroyed") {
 		profile.Ending = "sad"
 	}
 
-	q5 := strings.ToLower(getAns("q5", "Any dealbreakers?"))
+	q5 := strings.ToLower(getAns("q5", "What do we absolutely want to avoid today?"))
 	if strings.Contains(q5, "gore") {
 		profile.Dealbreakers = append(profile.Dealbreakers, "gore")
 	}
 	if strings.Contains(q5, "romance") {
 		profile.Dealbreakers = append(profile.Dealbreakers, "romance")
 	}
-	if strings.Contains(q5, "subtitles") {
+	if strings.Contains(q5, "subtitle") {
 		profile.Dealbreakers = append(profile.Dealbreakers, "subtitles")
 	}
 

@@ -68,20 +68,20 @@ Prior answers (may be empty for the first question): %s
 
 Question bank (use EXACTLY these questions and options in order, but you may skip ahead or stop early):
 
-Q1: "What are you in the mood for?"
-Options: ["Turn my brain off", "Something intense", "Make me think", "Scare me", "Surprise me"]
+Q1: "How would you describe your week so far?"
+Options: ["Exhausting", "Rollercoaster", "Chill", "Productive"]
 
-Q2: "Pace preference?"
-Options: ["Fast paced", "Slow burn"]
+Q2: "What kind of energy do you need tonight?"
+Options: ["Match my chaos", "Slow and steady", "Brain-off comfort"]
 
-Q3: "How much attention can you give?"
-Options: ["Full focus", "Half-watching on my phone"]
+Q3: "How much mental capacity do you have left?"
+Options: ["My brain is fried", "Ready to think", "Background noise"]
 
-Q4: "Ending vibes?"
-Options: ["Happy", "Sad / dark", "Doesn't matter"]
+Q4: "How do you want to feel when the credits roll?"
+Options: ["Uplifted", "Mind-blown", "Emotionally destroyed"]
 
-Q5: "Any dealbreakers?"
-Options: ["Gore", "Romance", "Subtitles", "Nope, anything goes"]
+Q5: "What do we absolutely want to avoid today?"
+Options: ["Gore", "Heavy romance", "Subtitles", "Nope, anything goes"]
 
 Rules:
 - If no answers yet, always return Q1.

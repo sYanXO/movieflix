@@ -48,44 +48,44 @@ func QuestionHandler(llmClient *llm.Client) gin.HandlerFunc {
 }
 
 func getNextQuestionHeuristic(answers map[string]string) *models.QuestionResponse {
-	hasQ1 := hasAnswer(answers, "q1", "What are you in the mood for?")
-	hasQ2 := hasAnswer(answers, "q2", "Pace preference?")
-	hasQ3 := hasAnswer(answers, "q3", "How much attention can you give?")
-	hasQ4 := hasAnswer(answers, "q4", "Ending vibes?")
-	hasQ5 := hasAnswer(answers, "q5", "Any dealbreakers?")
+	hasQ1 := hasAnswer(answers, "q1", "How would you describe your week so far?")
+	hasQ2 := hasAnswer(answers, "q2", "What kind of energy do you need tonight?")
+	hasQ3 := hasAnswer(answers, "q3", "How much mental capacity do you have left?")
+	hasQ4 := hasAnswer(answers, "q4", "How do you want to feel when the credits roll?")
+	hasQ5 := hasAnswer(answers, "q5", "What do we absolutely want to avoid today?")
 
 	if !hasQ1 {
 		return &models.QuestionResponse{
-			Question: "What are you in the mood for?",
-			Options:  []string{"Turn my brain off", "Something intense", "Make me think", "Scare me", "Surprise me"},
+			Question: "How would you describe your week so far?",
+			Options:  []string{"Exhausting", "Rollercoaster", "Chill", "Productive"},
 			IsFinal:  false,
 		}
 	}
 	if !hasQ2 {
 		return &models.QuestionResponse{
-			Question: "Pace preference?",
-			Options:  []string{"Fast paced", "Slow burn"},
+			Question: "What kind of energy do you need tonight?",
+			Options:  []string{"Match my chaos", "Slow and steady", "Brain-off comfort"},
 			IsFinal:  false,
 		}
 	}
 	if !hasQ3 {
 		return &models.QuestionResponse{
-			Question: "How much attention can you give?",
-			Options:  []string{"Full focus", "Half-watching on my phone"},
+			Question: "How much mental capacity do you have left?",
+			Options:  []string{"My brain is fried", "Ready to think", "Background noise"},
 			IsFinal:  false,
 		}
 	}
 	if !hasQ4 {
 		return &models.QuestionResponse{
-			Question: "Ending vibes?",
-			Options:  []string{"Happy", "Sad / dark", "Doesn't matter"},
+			Question: "How do you want to feel when the credits roll?",
+			Options:  []string{"Uplifted", "Mind-blown", "Emotionally destroyed"},
 			IsFinal:  false,
 		}
 	}
 	if !hasQ5 {
 		return &models.QuestionResponse{
-			Question: "Any dealbreakers?",
-			Options:  []string{"Gore", "Romance", "Subtitles", "Nope, anything goes"},
+			Question: "What do we absolutely want to avoid today?",
+			Options:  []string{"Gore", "Heavy romance", "Subtitles", "Nope, anything goes"},
 			IsFinal:  false,
 		}
 	}
