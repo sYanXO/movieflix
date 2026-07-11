@@ -24,7 +24,7 @@ import (
 
 const (
 	progressFile = "ingest_progress.json"
-	rateLimit    = time.Second / 14 // ~14 req/s to stay under 1500 req/day safely
+	rateLimit    = 650 * time.Millisecond // Stay under Gemini Free Tier's 100 RPM (Requests Per Minute)
 )
 
 type Progress struct {
