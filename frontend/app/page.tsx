@@ -435,7 +435,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── INTERACTIVE VECTOR PLAYGROUND ──────────────────────── */}
-      <section className="relative py-28 overflow-hidden">
+      <section className="relative py-28 overflow-hidden hidden lg:block">
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
