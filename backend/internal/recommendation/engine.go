@@ -15,23 +15,29 @@ import (
 	"moodflix/internal/models"
 )
 
-// RecommendationEngine defines the seam for requesting recommendations.
+// RecommendationEngine defines the seam for requesting recommendations and domain operations.
 type RecommendationEngine interface {
 	GetRecommendations(ctx context.Context, answers map[string]string) (*models.RecommendResponse, error)
 	GetFriendRecommendations(ctx context.Context, answersA, answersB map[string]string) (*models.FriendRecommendResponse, error)
+	GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error)
+	GetMoodBreakdown(ctx context.Context, profile *models.MoodProfile) (*models.MoodBreakdownResponse, error)
+	ClassifyQuery(ctx context.Context, text string) (*models.ClassifyQueryResponse, error)
+	Explain(ctx context.Context, profile *models.MoodProfile, answers map[string]string, movie models.Movie) (string, error)
 }
 
 // DefaultRecommendationEngine implements the recommendations pipeline.
 type DefaultRecommendationEngine struct {
-	llmClient *llm.Client
-	dbPool    *pgxpool.Pool
+	adapter  llm.LLMAdapter
+	prompter *LLMPrompter
+	dbPool   *pgxpool.Pool
 }
 
 // NewEngine creates a new DefaultRecommendationEngine.
-func NewEngine(llmClient *llm.Client, dbPool *pgxpool.Pool) *DefaultRecommendationEngine {
+func NewEngine(adapter llm.LLMAdapter, prompter *LLMPrompter, dbPool *pgxpool.Pool) *DefaultRecommendationEngine {
 	return &DefaultRecommendationEngine{
-		llmClient: llmClient,
-		dbPool:    dbPool,
+		adapter:  adapter,
+		prompter: prompter,
+		dbPool:   dbPool,
 	}
 }
 
@@ -55,14 +61,14 @@ func (e *DefaultRecommendationEngine) GetRecommendations(ctx context.Context, an
 	// Goroutine A: Parse answers into structured MoodProfile
 	go func() {
 		defer wg.Done()
-		profile, parseErr = e.llmClient.ParseMoodProfile(ctx, answers)
+		profile, parseErr = e.prompter.ParseMoodProfile(ctx, answers)
 	}()
 
 	// Goroutine B: Embed raw answers text in parallel
 	go func() {
 		defer wg.Done()
 		rawText := buildRawAnswersText(answers)
-		embedding, embedErr = e.llmClient.EmbedText(ctx, rawText)
+		embedding, embedErr = e.adapter.EmbedText(ctx, rawText)
 	}()
 
 	wg.Wait()
@@ -127,7 +133,7 @@ func (e *DefaultRecommendationEngine) GetRecommendations(ctx context.Context, an
 	// ReRank candidates using LLM (if not rate limited)
 	var top5 []models.Movie
 	if !isRateLimited {
-		top5, err = e.llmClient.ReRank(ctx, profile, filtered)
+		top5, err = e.prompter.ReRank(ctx, profile, filtered)
 		if err != nil {
 			// Fallback: return first 5 from vector search
 			top5 = filtered
@@ -176,13 +182,13 @@ func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Conte
 	// Goroutine A: Parse Person A's answers concurrently
 	go func() {
 		defer wg.Done()
-		profileA, parseAErr = e.llmClient.ParseMoodProfile(ctx, answersA)
+		profileA, parseAErr = e.prompter.ParseMoodProfile(ctx, answersA)
 	}()
 
 	// Goroutine B: Parse Person B's answers concurrently
 	go func() {
 		defer wg.Done()
-		profileB, parseBErr = e.llmClient.ParseMoodProfile(ctx, answersB)
+		profileB, parseBErr = e.prompter.ParseMoodProfile(ctx, answersB)
 	}()
 
 	wg.Wait()
@@ -219,7 +225,7 @@ func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Conte
 	if isRateLimited {
 		mergedProfile, mergedMood = heuristicMerge(profileA, profileB)
 	} else {
-		mergedProfile, mergedMood, mergeErr = e.llmClient.MergeMoodProfiles(ctx, profileA, profileB)
+		mergedProfile, mergedMood, mergeErr = e.prompter.MergeMoodProfiles(ctx, profileA, profileB)
 		if mergeErr != nil {
 			errStr := strings.ToLower(mergeErr.Error())
 			if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") {
@@ -239,7 +245,7 @@ func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Conte
 	var err error
 
 	profileText := buildProfileText(mergedProfile)
-	embedding, embedErr = e.llmClient.EmbedText(ctx, profileText)
+	embedding, embedErr = e.adapter.EmbedText(ctx, profileText)
 	if embedErr != nil {
 		errStr := strings.ToLower(embedErr.Error())
 		if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") {
@@ -278,7 +284,7 @@ func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Conte
 	// ReRank using LLM
 	var top5 []models.Movie
 	if !isRateLimited {
-		top5, err = e.llmClient.ReRank(ctx, mergedProfile, filtered)
+		top5, err = e.prompter.ReRank(ctx, mergedProfile, filtered)
 		if err != nil {
 			// Fallback: return first 5 from vector search
 			top5 = filtered
@@ -306,6 +312,121 @@ func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Conte
 		MoodProfile:     mergedProfile,
 		MergedMood:      mergedMood,
 	}, nil
+}
+
+// GenerateAdaptiveQuiz delegates to the prompter, with fallback to static quiz on rate limits.
+func (e *DefaultRecommendationEngine) GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error) {
+	questions, err := e.prompter.GenerateAdaptiveQuiz(ctx, starterAnswer)
+	if err != nil {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "429") || strings.Contains(errMsg, "quota") || strings.Contains(errMsg, "limit") {
+			log.Println("⚠️ Rate-limited on GenerateAdaptiveQuiz. Falling back to static quiz.")
+			return getStaticQuizFallback(), nil
+		}
+		return nil, err
+	}
+	return questions, nil
+}
+
+// getStaticQuizFallback returns the static remaining questions if the LLM rate limits.
+func getStaticQuizFallback() []models.QuestionResponse {
+	return []models.QuestionResponse{
+		{
+			Question: "What kind of energy do you need tonight?",
+			Options:  []string{"Match my chaos", "Slow and steady", "Brain-off comfort"},
+			IsFinal:  false,
+		},
+		{
+			Question: "How much mental capacity do you have left?",
+			Options:  []string{"My brain is fried", "Ready to think", "Background noise"},
+			IsFinal:  false,
+		},
+		{
+			Question: "How do you want to feel when the credits roll?",
+			Options:  []string{"Uplifted", "Mind-blown", "Emotionally destroyed"},
+			IsFinal:  false,
+		},
+		{
+			Question: "What do we absolutely want to avoid today?",
+			Options:  []string{"Gore", "Heavy romance", "Subtitles", "Nope, anything goes"},
+			IsFinal:  false,
+		},
+	}
+}
+
+// GetMoodBreakdown delegates to the prompter, with fallback on rate limits.
+func (e *DefaultRecommendationEngine) GetMoodBreakdown(ctx context.Context, profile *models.MoodProfile) (*models.MoodBreakdownResponse, error) {
+	breakdown, err := e.prompter.MoodBreakdown(ctx, profile)
+	if err != nil {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "429") || strings.Contains(errMsg, "quota") || strings.Contains(errMsg, "limit") {
+			return fallbackBreakdown(profile), nil
+		}
+		return nil, err
+	}
+	return breakdown, nil
+}
+
+// fallbackBreakdown builds a basic breakdown without LLM when rate-limited.
+func fallbackBreakdown(p *models.MoodProfile) *models.MoodBreakdownResponse {
+	attrs := []models.MoodAttribute{}
+
+	for i, g := range p.Genres {
+		score := 90 - i*10
+		if score < 50 {
+			score = 50
+		}
+		attrs = append(attrs, models.MoodAttribute{Label: g, Score: score})
+	}
+
+	if p.Pace == "fast" {
+		attrs = append(attrs, models.MoodAttribute{Label: "Fast Paced", Score: 85})
+	} else if p.Pace == "slow" {
+		attrs = append(attrs, models.MoodAttribute{Label: "Slow Burn", Score: 85})
+	}
+
+	if strings.Contains(strings.ToLower(p.Tone), "dark") || strings.Contains(strings.ToLower(p.Tone), "gritty") {
+		attrs = append(attrs, models.MoodAttribute{Label: "Dark Tone", Score: 80})
+	} else if strings.Contains(strings.ToLower(p.Tone), "light") || strings.Contains(strings.ToLower(p.Tone), "fun") {
+		attrs = append(attrs, models.MoodAttribute{Label: "Feel-Good", Score: 80})
+	}
+
+	persona := "The Curious Viewer"
+	mood := strings.ToLower(p.Mood)
+	if strings.Contains(mood, "thriller") || strings.Contains(mood, "tense") || strings.Contains(mood, "dark") {
+		persona = "The Brooding Auteur"
+	} else if strings.Contains(mood, "horror") || strings.Contains(mood, "scare") {
+		persona = "The Thrill Seeker"
+	} else if strings.Contains(mood, "comedy") || strings.Contains(mood, "light") || strings.Contains(mood, "fun") {
+		persona = "The Cozy Escapist"
+	} else if strings.Contains(mood, "think") || strings.Contains(mood, "intellect") || strings.Contains(mood, "drama") {
+		persona = "The Quiet Philosopher"
+	} else if strings.Contains(mood, "action") || strings.Contains(mood, "intense") || strings.Contains(mood, "fast") {
+		persona = "The Adrenaline Junkie"
+	}
+
+	return &models.MoodBreakdownResponse{
+		Attributes: attrs,
+		Persona:    persona,
+	}
+}
+
+// ClassifyQuery delegates to the prompter.
+func (e *DefaultRecommendationEngine) ClassifyQuery(ctx context.Context, text string) (*models.ClassifyQueryResponse, error) {
+	return e.prompter.ClassifyQuery(ctx, text)
+}
+
+// Explain delegates to the prompter, with fallback on rate limits.
+func (e *DefaultRecommendationEngine) Explain(ctx context.Context, profile *models.MoodProfile, answers map[string]string, movie models.Movie) (string, error) {
+	explanation, err := e.prompter.Explain(ctx, profile, answers, movie)
+	if err != nil {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "429") || strings.Contains(errMsg, "quota") || strings.Contains(errMsg, "limit") {
+			return fmt.Sprintf("Based on your vibe, %q fits the bill perfectly! It matches your requested pace and tone, delivering a great watch that avoids your dealbreakers.", movie.Title), nil
+		}
+		return "", err
+	}
+	return explanation, nil
 }
 
 // CachedRecommendationEngine wraps an engine with in-memory caching.
@@ -352,6 +473,22 @@ func (c *CachedRecommendationEngine) GetRecommendations(ctx context.Context, ans
 // GetFriendRecommendations delegates directly to inner engine (no caching for friend mode).
 func (c *CachedRecommendationEngine) GetFriendRecommendations(ctx context.Context, answersA, answersB map[string]string) (*models.FriendRecommendResponse, error) {
 	return c.inner.GetFriendRecommendations(ctx, answersA, answersB)
+}
+
+func (c *CachedRecommendationEngine) GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error) {
+	return c.inner.GenerateAdaptiveQuiz(ctx, starterAnswer)
+}
+
+func (c *CachedRecommendationEngine) GetMoodBreakdown(ctx context.Context, profile *models.MoodProfile) (*models.MoodBreakdownResponse, error) {
+	return c.inner.GetMoodBreakdown(ctx, profile)
+}
+
+func (c *CachedRecommendationEngine) ClassifyQuery(ctx context.Context, text string) (*models.ClassifyQueryResponse, error) {
+	return c.inner.ClassifyQuery(ctx, text)
+}
+
+func (c *CachedRecommendationEngine) Explain(ctx context.Context, profile *models.MoodProfile, answers map[string]string, movie models.Movie) (string, error) {
+	return c.inner.Explain(ctx, profile, answers, movie)
 }
 
 // buildRawAnswersText concatenates answers into a descriptive string.

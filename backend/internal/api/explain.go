@@ -3,17 +3,16 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"moodflix/internal/db"
-	"moodflix/internal/llm"
+	"moodflix/internal/recommendation"
 	"moodflix/internal/models"
 )
 
 // ExplainHandler handles POST /api/explain
-func ExplainHandler(llmClient *llm.Client, pool *pgxpool.Pool) gin.HandlerFunc {
+func ExplainHandler(engine recommendation.RecommendationEngine, pool *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.ExplainRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -35,16 +34,10 @@ func ExplainHandler(llmClient *llm.Client, pool *pgxpool.Pool) gin.HandlerFunc {
 		}
 
 		// Generate explanation
-		explanation, err := llmClient.Explain(ctx, req.MoodProfile, req.UserAnswers, *movie)
+		explanation, err := engine.Explain(ctx, req.MoodProfile, req.UserAnswers, *movie)
 		if err != nil {
-			errMsg := strings.ToLower(err.Error())
-			if strings.Contains(errMsg, "429") || strings.Contains(errMsg, "quota") || strings.Contains(errMsg, "limit") {
-				// Fallback template-based explanation
-				explanation = fmt.Sprintf("Based on your vibe, %q fits the bill perfectly! It matches your requested pace and tone, delivering a great watch that avoids your dealbreakers.", movie.Title)
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("explanation failed: %v", err)})
-				return
-			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("explanation failed: %v", err)})
+			return
 		}
 
 		c.JSON(http.StatusOK, models.ExplainResponse{Explanation: explanation})

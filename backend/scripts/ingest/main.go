@@ -66,10 +66,10 @@ func main() {
 
 	ctx := context.Background()
 
-	// Init LLM client
-	llmClient, err := llm.NewClient(geminiKey, nil)
+	// Init LLM Adapter
+	llmAdapter, err := llm.NewGeminiAdapter(geminiKey)
 	if err != nil {
-		log.Fatalf("LLM client: %v", err)
+		log.Fatalf("LLM adapter: %v", err)
 	}
 
 	// Init DB
@@ -171,7 +171,7 @@ func main() {
 		<-ticker.C
 
 		// Embed
-		embedding, err := llmClient.EmbedText(ctx, embText)
+		embedding, err := llmAdapter.EmbedText(ctx, embText)
 		if err != nil {
 			errStr := strings.ToLower(err.Error())
 			if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") || strings.Contains(errStr, "exhausted") {

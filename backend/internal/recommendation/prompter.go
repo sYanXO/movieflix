@@ -1,4 +1,4 @@
-package llm
+package recommendation
 
 import (
 	"context"
@@ -6,48 +6,23 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/genai"
-	"moodflix/internal/models"
 	"moodflix/internal/db"
+	"moodflix/internal/llm"
+	"moodflix/internal/models"
 )
 
-// Client wraps the Gemini generative AI client.
-type Client struct {
-	inner   *genai.Client
-	apiKey  string
+// LLMPrompter formats domain models into prompts, calls the LLMAdapter, and parses the JSON response.
+type LLMPrompter struct {
+	adapter llm.LLMAdapter
 	prompts *db.PromptManager
 }
 
-// NewClient creates a new Gemini LLM client.
-func NewClient(apiKey string, prompts *db.PromptManager) (*Client, error) {
-	ctx := context.Background()
-	c, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey:  apiKey,
-		Backend: genai.BackendGeminiAPI,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("creating gemini client: %w", err)
+// NewLLMPrompter creates a new LLMPrompter.
+func NewLLMPrompter(adapter llm.LLMAdapter, prompts *db.PromptManager) *LLMPrompter {
+	return &LLMPrompter{
+		adapter: adapter,
+		prompts: prompts,
 	}
-	return &Client{inner: c, apiKey: apiKey, prompts: prompts}, nil
-}
-
-const flashModel = "gemini-3.1-flash-lite"
-
-// generate sends a prompt to Gemini 2.5 Flash and returns the text response.
-func (c *Client) generate(ctx context.Context, prompt string) (string, error) {
-	result, err := c.inner.Models.GenerateContent(ctx, flashModel,
-		genai.Text(prompt), nil)
-	if err != nil {
-		return "", fmt.Errorf("generate content: %w", err)
-	}
-	if len(result.Candidates) == 0 {
-		return "", fmt.Errorf("no candidates returned")
-	}
-	var sb strings.Builder
-	for _, part := range result.Candidates[0].Content.Parts {
-		sb.WriteString(part.Text)
-	}
-	return sb.String(), nil
 }
 
 // stripJSON removes markdown code fences if the LLM wraps JSON in them.
@@ -60,7 +35,7 @@ func stripJSON(s string) string {
 }
 
 // GenerateAdaptiveQuiz generates a set of 3 highly customized movie-mood questions based on the user's initial answer.
-func (c *Client) GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error) {
+func (p *LLMPrompter) GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error) {
 	fallback := `The user was asked: "How would you describe your week so far?"
 They answered: "%s"
 
@@ -73,19 +48,18 @@ Respond ONLY with valid JSON (no markdown):
     "question": "exact question text",
     "options": ["option1", "option2", ...],
     "is_final": false
-  },
-  ...
+  }
 ]`
 
 	template := fallback
-	if c.prompts != nil {
-		if t, err := c.prompts.GetActivePrompt(ctx, "GenerateAdaptiveQuiz", fallback); err == nil {
+	if p.prompts != nil {
+		if t, err := p.prompts.GetActivePrompt(ctx, "GenerateAdaptiveQuiz", fallback); err == nil {
 			template = t
 		}
 	}
 	prompt := fmt.Sprintf(template, starterAnswer)
 
-	raw, err := c.generate(ctx, prompt)
+	raw, err := p.adapter.GenerateText(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +69,6 @@ Respond ONLY with valid JSON (no markdown):
 		return nil, fmt.Errorf("parsing adaptive quiz response: %w\nraw: %s", err, raw)
 	}
 
-	// Safety fallback
 	if len(questions) == 0 {
 		return nil, fmt.Errorf("no questions generated")
 	}
@@ -104,7 +77,7 @@ Respond ONLY with valid JSON (no markdown):
 }
 
 // ParseMoodProfile converts user answers to a structured mood profile.
-func (c *Client) ParseMoodProfile(ctx context.Context, answers map[string]string) (*models.MoodProfile, error) {
+func (p *LLMPrompter) ParseMoodProfile(ctx context.Context, answers map[string]string) (*models.MoodProfile, error) {
 	var parts []string
 	keys := []string{"q1", "q2", "q3", "q4", "q5"}
 	for _, k := range keys {
@@ -132,14 +105,14 @@ Respond ONLY with JSON (no markdown):
 }`
 
 	template := fallback
-	if c.prompts != nil {
-		if t, err := c.prompts.GetActivePrompt(ctx, "ParseMoodProfile", fallback); err == nil {
+	if p.prompts != nil {
+		if t, err := p.prompts.GetActivePrompt(ctx, "ParseMoodProfile", fallback); err == nil {
 			template = t
 		}
 	}
 	prompt := fmt.Sprintf(template, answersText)
 
-	raw, err := c.generate(ctx, prompt)
+	raw, err := p.adapter.GenerateText(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +124,15 @@ Respond ONLY with JSON (no markdown):
 	return &profile, nil
 }
 
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "..."
+}
+
 // ReRank takes top 50 candidate movies and picks the best 5 for the user's mood profile.
-func (c *Client) ReRank(ctx context.Context, profile *models.MoodProfile, candidates []models.Movie) ([]models.Movie, error) {
+func (p *LLMPrompter) ReRank(ctx context.Context, profile *models.MoodProfile, candidates []models.Movie) ([]models.Movie, error) {
 	profileJSON, _ := json.Marshal(profile)
 
 	var movieList strings.Builder
@@ -165,28 +145,27 @@ func (c *Client) ReRank(ctx context.Context, profile *models.MoodProfile, candid
 	fallback := `User mood profile:
 %s
 
-I've found these candidate movies (sorted by vector similarity):
+I've found these candidate movies:
 %s
 
 Rank the top 5 that best match the user's mood. Avoid movies that conflict with dealbreakers.
 Respond ONLY with valid JSON (no markdown):
 {
   "top_5": [
-    { "movie_id": 123, "title": "Movie Title", "score": 95 },
-    ...
+    { "movie_id": 123, "title": "Movie Title", "score": 95 }
   ],
   "reasoning": "Brief overall reasoning"
 }`
 
 	template := fallback
-	if c.prompts != nil {
-		if t, err := c.prompts.GetActivePrompt(ctx, "ReRank", fallback); err == nil {
+	if p.prompts != nil {
+		if t, err := p.prompts.GetActivePrompt(ctx, "ReRank", fallback); err == nil {
 			template = t
 		}
 	}
 	prompt := fmt.Sprintf(template, string(profileJSON), movieList.String())
 
-	raw, err := c.generate(ctx, prompt)
+	raw, err := p.adapter.GenerateText(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +182,6 @@ Respond ONLY with valid JSON (no markdown):
 		return nil, fmt.Errorf("parsing rerank response: %w\nraw: %s", err, raw)
 	}
 
-	// Build a map for quick lookup
 	movieMap := make(map[int]models.Movie)
 	for _, m := range candidates {
 		movieMap[m.ID] = m
@@ -218,7 +196,6 @@ Respond ONLY with valid JSON (no markdown):
 			break
 		}
 	}
-	// Fallback: if LLM returned fewer than 5, pad from candidates
 	for _, m := range candidates {
 		if len(top5) >= 5 {
 			break
@@ -239,7 +216,7 @@ Respond ONLY with valid JSON (no markdown):
 }
 
 // Explain generates a 1-2 sentence explanation for why a movie was recommended.
-func (c *Client) Explain(ctx context.Context, profile *models.MoodProfile, answers map[string]string, movie models.Movie) (string, error) {
+func (p *LLMPrompter) Explain(ctx context.Context, profile *models.MoodProfile, answers map[string]string, movie models.Movie) (string, error) {
 	answersJSON, _ := json.Marshal(answers)
 	profileJSON, _ := json.Marshal(profile)
 
@@ -257,8 +234,8 @@ Genres: %s
 Why did we pick this? Respond in 1-2 sentences, casual and enthusiastic tone. No bullet points, just plain text.`
 
 	template := fallback
-	if c.prompts != nil {
-		if t, err := c.prompts.GetActivePrompt(ctx, "Explain", fallback); err == nil {
+	if p.prompts != nil {
+		if t, err := p.prompts.GetActivePrompt(ctx, "Explain", fallback); err == nil {
 			template = t
 		}
 	}
@@ -270,25 +247,18 @@ Why did we pick this? Respond in 1-2 sentences, casual and enthusiastic tone. No
 		movie.Overview,
 		strings.Join(movie.Genres, ", "))
 
-	return c.generate(ctx, prompt)
-}
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "..."
+	return p.adapter.GenerateText(ctx, prompt)
 }
 
 // MoodBreakdown scores cinematic attributes from a mood profile and assigns a persona label.
-func (c *Client) MoodBreakdown(ctx context.Context, profile *models.MoodProfile) (*models.MoodBreakdownResponse, error) {
+func (p *LLMPrompter) MoodBreakdown(ctx context.Context, profile *models.MoodProfile) (*models.MoodBreakdownResponse, error) {
 	profileJSON, _ := json.Marshal(profile)
 
 	fallback := `Given this cinematic mood profile:
 %s
 
 Score 6-8 cinematic attributes as percentages (0-100) that describe this viewer's taste.
-Also assign a fun, evocative cinematic persona label (e.g. "The Brooding Auteur", "The Cozy Escapist", "The Adrenaline Junkie", "The Quiet Philosopher").
+Also assign a fun, evocative cinematic persona label (e.g. "The Brooding Auteur", "The Cozy Escapist").
 
 Choose attributes relevant to the profile — examples: Thriller, Drama, Comedy, Action, Horror, Sci-Fi, Romance, Slow Burn, Fast Paced, Dark Tone, Light Tone, Thought-Provoking, Feel-Good, Edge-of-Seat, Emotional Depth, Visually Stunning.
 
@@ -296,21 +266,20 @@ Respond ONLY with valid JSON (no markdown):
 {
   "attributes": [
     { "label": "Thriller", "score": 85 },
-    { "label": "Dark Tone", "score": 75 },
-    ...
+    { "label": "Dark Tone", "score": 75 }
   ],
   "persona": "The Brooding Auteur"
 }`
 
 	template := fallback
-	if c.prompts != nil {
-		if t, err := c.prompts.GetActivePrompt(ctx, "MoodBreakdown", fallback); err == nil {
+	if p.prompts != nil {
+		if t, err := p.prompts.GetActivePrompt(ctx, "MoodBreakdown", fallback); err == nil {
 			template = t
 		}
 	}
 	prompt := fmt.Sprintf(template, string(profileJSON))
 
-	raw, err := c.generate(ctx, prompt)
+	raw, err := p.adapter.GenerateText(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +292,7 @@ Respond ONLY with valid JSON (no markdown):
 }
 
 // MergeMoodProfiles combines two individual mood profiles into one shared profile for friend mode.
-func (c *Client) MergeMoodProfiles(ctx context.Context, profileA, profileB *models.MoodProfile) (*models.MoodProfile, string, error) {
+func (p *LLMPrompter) MergeMoodProfiles(ctx context.Context, profileA, profileB *models.MoodProfile) (*models.MoodProfile, string, error) {
 	profileAJSON, _ := json.Marshal(profileA)
 	profileBJSON, _ := json.Marshal(profileB)
 
@@ -353,14 +322,14 @@ Respond ONLY with valid JSON (no markdown):
 }`
 
 	template := fallback
-	if c.prompts != nil {
-		if t, err := c.prompts.GetActivePrompt(ctx, "MergeMoodProfiles", fallback); err == nil {
+	if p.prompts != nil {
+		if t, err := p.prompts.GetActivePrompt(ctx, "MergeMoodProfiles", fallback); err == nil {
 			template = t
 		}
 	}
 	prompt := fmt.Sprintf(template, string(profileAJSON), string(profileBJSON))
 
-	raw, err := c.generate(ctx, prompt)
+	raw, err := p.adapter.GenerateText(ctx, prompt)
 	if err != nil {
 		return nil, "", err
 	}
@@ -376,7 +345,7 @@ Respond ONLY with valid JSON (no markdown):
 }
 
 // ClassifyQuery scores a text query against 6 genre clusters and computes a weighted 2D coordinate.
-func (c *Client) ClassifyQuery(ctx context.Context, text string) (*models.ClassifyQueryResponse, error) {
+func (p *LLMPrompter) ClassifyQuery(ctx context.Context, text string) (*models.ClassifyQueryResponse, error) {
 	fallback := `Analyze the following movie query and score it from 0.0 to 1.0 against these 6 genre archetypes based on how well it matches.
 Query: "%s"
 
@@ -388,11 +357,13 @@ Archetypes:
 - horror: Horror & Paranormal, scary, ghosts, blood, monsters
 - drama: Human Drama & Classics, deep, serious, historical, oscar-worthy
 
-Respond ONLY with valid JSON (no markdown) containing the 6 float scores (0.0 to 1.0):
+Think step-by-step about which archetypes apply and why. First, provide a brief reasoning for your scores. Then, provide the 6 float scores (0.0 to 1.0).
+Respond ONLY with valid JSON (no markdown):
 {
+  "reasoning": "This query mentions 'space' and 'explosions', blending Sci-Fi and Action.",
   "sci_fi": 0.8,
   "romance": 0.0,
-  "action": 0.2,
+  "action": 0.6,
   "comedy": 0.0,
   "horror": 0.0,
   "drama": 0.0
@@ -400,7 +371,7 @@ Respond ONLY with valid JSON (no markdown) containing the 6 float scores (0.0 to
 
 	prompt := fmt.Sprintf(fallback, text)
 
-	raw, err := c.generate(ctx, prompt)
+	raw, err := p.adapter.GenerateText(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -424,13 +395,12 @@ Respond ONLY with valid JSON (no markdown) containing the 6 float scores (0.0 to
 		x = (scores.SciFi*-0.55 + scores.Romance*0.53 + scores.Action*-0.58 + scores.Comedy*0.48 + scores.Horror*-0.18 + scores.Drama*0.10) / totalWeight
 		y = (scores.SciFi*0.40 + scores.Romance*-0.52 + scores.Action*-0.38 + scores.Comedy*0.45 + scores.Horror*-0.66 + scores.Drama*0.62) / totalWeight
 	} else {
-		// Deterministic jitter based on string length
 		seed := 0
 		for _, char := range text {
 			seed += int(char)
 		}
-		x = (float64(seed%7) - 3.5) / 10.0 // [-0.35, 0.35]
-		y = (float64(seed%9) - 4.5) / 10.0 // [-0.45, 0.45]
+		x = (float64(seed%7) - 3.5) / 10.0
+		y = (float64(seed%9) - 4.5) / 10.0
 	}
 
 	return &models.ClassifyQueryResponse{

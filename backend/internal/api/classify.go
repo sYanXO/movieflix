@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"moodflix/internal/llm"
+	"moodflix/internal/recommendation"
 )
 
 // ClassifyQueryHandler handles GET /api/classify-query
-func ClassifyQueryHandler(llmClient *llm.Client) gin.HandlerFunc {
+func ClassifyQueryHandler(engine recommendation.RecommendationEngine) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		text := c.Query("text")
 		if text == "" {
@@ -17,7 +17,7 @@ func ClassifyQueryHandler(llmClient *llm.Client) gin.HandlerFunc {
 			return
 		}
 
-		resp, err := llmClient.ClassifyQuery(c.Request.Context(), text)
+		resp, err := engine.ClassifyQuery(c.Request.Context(), text)
 		if err != nil {
 			log.Printf("Error classifying query: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to classify query"})

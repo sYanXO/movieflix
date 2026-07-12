@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useInView } from 'framer-motion';
-import VectorSpaceVisualizer from '@/components/VectorSpaceVisualizer';
+import VectorSpaceVisualizer from '@/components/vector-visualizer';
 
 const MOOD_WORDS = [
   'Thrilling', 'Heartwarming', 'Mind-bending',

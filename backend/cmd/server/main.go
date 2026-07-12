@@ -55,15 +55,17 @@ func main() {
 	// Init Prompt Manager with 5 minute TTL
 	promptManager := db.NewPromptManager(pool, 5*time.Minute)
 
-	// Init Gemini LLM client
-	llmClient, err := llm.NewClient(geminiKey, promptManager)
+	// Init LLM Adapter and Prompter
+	llmAdapter, err := llm.NewGeminiAdapter(geminiKey)
 	if err != nil {
-		log.Fatalf("creating LLM client: %v", err)
+		log.Fatalf("creating LLM adapter: %v", err)
 	}
-	log.Println("✅ Gemini client ready")
+	log.Println("✅ Gemini adapter ready")
+
+	prompter := recommendation.NewLLMPrompter(llmAdapter, promptManager)
 
 	// Init Recommendation Engine (with cache)
-	baseEngine := recommendation.NewEngine(llmClient, pool)
+	baseEngine := recommendation.NewEngine(llmAdapter, prompter, pool)
 	recEngine := recommendation.NewCachedEngine(baseEngine)
 
 	// Setup Gin router
@@ -95,12 +97,12 @@ func main() {
 	// API routes
 	apiGroup := r.Group("/api")
 	{
-		apiGroup.POST("/generate-quiz", api.GenerateQuizHandler(llmClient))
+		apiGroup.POST("/generate-quiz", api.GenerateQuizHandler(recEngine))
 		apiGroup.POST("/recommend", api.RecommendHandler(recEngine, pool))
 		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(recEngine, pool))
-		apiGroup.POST("/explain", api.ExplainHandler(llmClient, pool))
-		apiGroup.POST("/mood-breakdown", api.MoodBreakdownHandler(llmClient))
-		apiGroup.GET("/classify-query", api.ClassifyQueryHandler(llmClient))
+		apiGroup.POST("/explain", api.ExplainHandler(recEngine, pool))
+		apiGroup.POST("/mood-breakdown", api.MoodBreakdownHandler(recEngine))
+		apiGroup.GET("/classify-query", api.ClassifyQueryHandler(recEngine))
 		apiGroup.GET("/proxy-image", api.ProxyImageHandler(pool))
 
 		// Shared remote session routes
