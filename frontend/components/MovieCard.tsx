@@ -87,17 +87,17 @@ export default function MovieCard({ movie, index, onWhyThis }: MovieCardProps) {
       </div>
 
       {/* Card body */}
-      <div className="flex flex-col flex-1 p-5 gap-3 -mt-6 relative z-10">
+      <div className="flex flex-col flex-1 p-3 sm:p-5 gap-2 sm:gap-3 -mt-4 sm:-mt-6 relative z-10">
         {/* Title */}
-        <h3 className="font-display font-bold text-foreground text-lg leading-tight line-clamp-2">
+        <h3 className="font-display font-bold text-foreground text-base sm:text-lg leading-tight line-clamp-2">
           {movie.title}
         </h3>
 
         {/* Genre chips */}
         {genres.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1">
             {genres.map(g => (
-              <span key={g} className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-border bg-background text-foreground/60 font-semibold">
+              <span key={g} className="text-[9px] sm:text-[10px] uppercase tracking-wider px-1.5 py-0.5 sm:px-2 rounded border border-border bg-background text-foreground/60 font-semibold">
                 {g}
               </span>
             ))}
@@ -105,7 +105,7 @@ export default function MovieCard({ movie, index, onWhyThis }: MovieCardProps) {
         )}
 
         {/* Overview */}
-        <p className="text-foreground/50 text-xs leading-relaxed line-clamp-3 flex-1 mt-1">
+        <p className="text-foreground/50 text-[10px] sm:text-xs leading-relaxed line-clamp-2 sm:line-clamp-3 flex-1 mt-1">
           {movie.overview}
         </p>
 
@@ -114,7 +114,7 @@ export default function MovieCard({ movie, index, onWhyThis }: MovieCardProps) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           onClick={(e) => { e.stopPropagation(); onWhyThis(movie); }}
-          className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-primary border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white transition-colors duration-200"
+          className="mt-1 sm:mt-2 w-full py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider text-primary border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white transition-colors duration-200"
         >
           Why this?
         </motion.button>

@@ -610,7 +610,7 @@ function QuizInner() {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => isMulti ? toggleMulti(option) : handleAnswer(option)}
-                      className={`w-full text-left px-6 py-5 rounded-2xl border transition-all duration-300 flex items-center gap-4 font-semibold text-lg ${
+                      className={`w-full text-left px-4 py-4 sm:px-6 sm:py-5 rounded-2xl border transition-all duration-300 flex items-center gap-3 sm:gap-4 font-semibold text-base sm:text-lg ${
                         isSelected
                            ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(202,138,4,0.3)]'
                            : 'bg-surface border-border/50 text-foreground/80 hover:bg-surface-hover hover:border-border hover:text-foreground'
