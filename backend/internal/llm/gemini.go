@@ -374,3 +374,68 @@ Respond ONLY with valid JSON (no markdown):
 	}
 	return &result.Profile, result.MergedMood, nil
 }
+
+// ClassifyQuery scores a text query against 6 genre clusters and computes a weighted 2D coordinate.
+func (c *Client) ClassifyQuery(ctx context.Context, text string) (*models.ClassifyQueryResponse, error) {
+	fallback := `Analyze the following movie query and score it from 0.0 to 1.0 against these 6 genre archetypes based on how well it matches.
+Query: "%s"
+
+Archetypes:
+- sci_fi: Sci-Fi Space & Concepts, future, robots, matrix, aliens
+- romance: Romance & Relationships, love, musicals, heartbreak
+- action: Action & Thrillers, explosions, car chases, vengeance
+- comedy: Comedy & Satire, funny, friends, jokes, hangover
+- horror: Horror & Paranormal, scary, ghosts, blood, monsters
+- drama: Human Drama & Classics, deep, serious, historical, oscar-worthy
+
+Respond ONLY with valid JSON (no markdown) containing the 6 float scores (0.0 to 1.0):
+{
+  "sci_fi": 0.8,
+  "romance": 0.0,
+  "action": 0.2,
+  "comedy": 0.0,
+  "horror": 0.0,
+  "drama": 0.0
+}`
+
+	prompt := fmt.Sprintf(fallback, text)
+
+	raw, err := c.generate(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	var scores struct {
+		SciFi   float64 `json:"sci_fi"`
+		Romance float64 `json:"romance"`
+		Action  float64 `json:"action"`
+		Comedy  float64 `json:"comedy"`
+		Horror  float64 `json:"horror"`
+		Drama   float64 `json:"drama"`
+	}
+	if err := json.Unmarshal([]byte(stripJSON(raw)), &scores); err != nil {
+		return nil, fmt.Errorf("parsing classify scores: %w\nraw: %s", err, raw)
+	}
+
+	totalWeight := scores.SciFi + scores.Romance + scores.Action + scores.Comedy + scores.Horror + scores.Drama
+
+	var x, y float64
+	if totalWeight > 0 {
+		x = (scores.SciFi*-0.55 + scores.Romance*0.53 + scores.Action*-0.58 + scores.Comedy*0.48 + scores.Horror*-0.18 + scores.Drama*0.10) / totalWeight
+		y = (scores.SciFi*0.40 + scores.Romance*-0.52 + scores.Action*-0.38 + scores.Comedy*0.45 + scores.Horror*-0.66 + scores.Drama*0.62) / totalWeight
+	} else {
+		// Deterministic jitter based on string length
+		seed := 0
+		for _, char := range text {
+			seed += int(char)
+		}
+		x = (float64(seed%7) - 3.5) / 10.0 // [-0.35, 0.35]
+		y = (float64(seed%9) - 4.5) / 10.0 // [-0.45, 0.45]
+	}
+
+	return &models.ClassifyQueryResponse{
+		X:     x,
+		Y:     y,
+		Query: text,
+	}, nil
+}

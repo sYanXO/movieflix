@@ -133,3 +133,10 @@ type GenerateQuizResponse struct {
 	Questions []QuestionResponse `json:"questions"`
 }
 
+// ClassifyQueryResponse is returned by GET /api/classify-query.
+type ClassifyQueryResponse struct {
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+	Query string  `json:"query"`
+}
+

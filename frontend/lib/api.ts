@@ -153,3 +153,16 @@ export function rateSession(
   return patch(`/api/sessions/${sessionId}/rating`, { rating, user_notes: userNotes });
 }
 
+export interface ClassifyQueryResponse {
+  x: number;
+  y: number;
+  query: string;
+}
+
+export function getClassifyQuery(text: string): Promise<ClassifyQueryResponse> {
+  return fetch(`${BASE}/api/classify-query?text=${encodeURIComponent(text)}`).then(res => {
+    if (!res.ok) throw new Error('Failed to classify query');
+    return res.json();
+  });
+}
+

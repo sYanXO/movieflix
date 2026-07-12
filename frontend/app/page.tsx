@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
+import VectorSpaceVisualizer from '@/components/VectorSpaceVisualizer';
 
 const MOOD_WORDS = [
   'Thrilling', 'Heartwarming', 'Mind-bending',
@@ -419,6 +420,43 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── INTERACTIVE VECTOR PLAYGROUND ──────────────────────── */}
+      <section className="relative py-28 overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(168,85,247,0.05) 0%, transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute top-0 left-0 right-0 h-px pointer-events-none"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(168,85,247,0.25), transparent)' }}
+        />
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-6">
+          <SectionWrapper>
+            <div className="text-center mb-16">
+              <span className="inline-block text-xs font-bold text-primary uppercase tracking-[0.2em] mb-4 px-3 py-1 rounded-full border border-primary/20 bg-primary/5">
+                The Science
+              </span>
+              <h2 className="font-display text-4xl sm:text-5xl font-black tracking-tight text-white mb-4">
+                Explore the Movie{' '}
+                <span className="gradient-text-primary">Vector Space</span>
+              </h2>
+              <p className="text-white/50 text-lg max-w-xl mx-auto">
+                Drag to explore coordinates, hover to inspect films, and project vibes to calculate cosine similarities in real-time.
+              </p>
+            </div>
+          </SectionWrapper>
+
+          <SectionWrapper>
+            <div className="w-full">
+              <VectorSpaceVisualizer />
+            </div>
+          </SectionWrapper>
+        </div>
+      </section>
+
       {/* ── FEATURES / WHY MOODFLIX ──────────────────────────────── */}
       <section className="relative py-28 overflow-hidden">
         {/* Animated gradient — shifted hue for visual contrast */}
@@ -444,7 +482,7 @@ export default function LandingPage() {
                 <span className="gradient-text-primary">actually fit</span>
               </h2>
               <p className="text-white/50 text-lg max-w-xl mx-auto">
-                Because "what's popular on Netflix" has never once matched how you feel at 10pm on a Tuesday.
+                Because &quot;what&apos;s popular on Netflix&quot; has never once matched how you feel at 10pm on a Tuesday.
               </p>
             </div>
           </SectionWrapper>

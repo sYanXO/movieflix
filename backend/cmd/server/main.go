@@ -100,6 +100,7 @@ func main() {
 		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(recEngine, pool))
 		apiGroup.POST("/explain", api.ExplainHandler(llmClient, pool))
 		apiGroup.POST("/mood-breakdown", api.MoodBreakdownHandler(llmClient))
+		apiGroup.GET("/classify-query", api.ClassifyQueryHandler(llmClient))
 		apiGroup.GET("/proxy-image", api.ProxyImageHandler(pool))
 
 		// Shared remote session routes
