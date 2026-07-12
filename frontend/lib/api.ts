@@ -166,3 +166,175 @@ export function getClassifyQuery(text: string): Promise<ClassifyQueryResponse> {
   });
 }
 
+// --- SessionRepository Data Layer ---
+
+class StorageCache {
+  private cache: Record<string, string> = {};
+  
+  getItem(key: string): string | null {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const val = sessionStorage.getItem(key);
+        if (val !== null) return val;
+      }
+    } catch (e) {
+      // Ignore exception if sessionStorage is blocked
+    }
+    return this.cache[key] ?? null;
+  }
+  
+  setItem(key: string, value: string): void {
+    this.cache[key] = value;
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(key, value);
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  removeItem(key: string): void {
+    delete this.cache[key];
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(key);
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  clear(): void {
+    this.cache = {};
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.clear();
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+}
+
+const storage = new StorageCache();
+
+export const SessionRepository = {
+  getAnswersA: (): Record<string, string> | null => {
+    const data = storage.getItem('moodflix_answers_a');
+    return data ? JSON.parse(data) : null;
+  },
+  setAnswersA: (answers: Record<string, string>) => {
+    storage.setItem('moodflix_answers_a', JSON.stringify(answers));
+  },
+  
+  getResults: (): RecommendResponse | FriendRecommendResponse | null => {
+    const data = storage.getItem('moodflix_results');
+    return data ? JSON.parse(data) : null;
+  },
+  setResults: (data: RecommendResponse | FriendRecommendResponse) => {
+    storage.setItem('moodflix_results', JSON.stringify(data));
+  },
+  
+  getAnswers: (): Record<string, string> | null => {
+    const data = storage.getItem('moodflix_answers');
+    return data ? JSON.parse(data) : null;
+  },
+  setAnswers: (answers: Record<string, string>) => {
+    storage.setItem('moodflix_answers', JSON.stringify(answers));
+  },
+
+  isFriendMode: (): boolean => {
+    return storage.getItem('moodflix_friend_mode') === 'true';
+  },
+  setFriendMode: (val: boolean) => {
+    if (val) storage.setItem('moodflix_friend_mode', 'true');
+    else storage.removeItem('moodflix_friend_mode');
+  },
+  
+  getMergedMood: (): string | null => {
+    return storage.getItem('moodflix_merged_mood');
+  },
+  setMergedMood: (mood: string) => {
+    storage.setItem('moodflix_merged_mood', mood);
+  },
+
+  clearSession: () => {
+    storage.clear();
+  },
+
+  /**
+   * Finalizes the quiz for either a single user or a friend.
+   * Encapsulates the logic for network fetching and session storage persistence.
+   */
+  async finalizeQuiz(
+    answers: Record<string, string>,
+    isFriendMode: boolean,
+    friendPerson: 'A' | 'B',
+    sessionId?: string | null
+  ): Promise<void> {
+    if (isFriendMode && friendPerson === 'B') {
+      if (sessionId) {
+        const data = await submitSession(sessionId, answers);
+        this.setResults(data);
+        this.setAnswers(answers);
+        this.setFriendMode(true);
+        this.setMergedMood(data.merged_mood ?? '');
+      } else {
+        const aAnswers = this.getAnswersA() ?? {};
+        const data = await getFriendRecommendations(aAnswers, answers);
+        this.setResults(data);
+        this.setAnswers(answers);
+        this.setFriendMode(true);
+        this.setMergedMood(data.merged_mood ?? '');
+      }
+    } else {
+      const data = await getRecommendations(answers);
+      this.setResults(data);
+      this.setAnswers(answers);
+      this.setFriendMode(false);
+    }
+  },
+
+  /**
+   * Polls the remote session status.
+   * Calls onComplete when the session is complete and results are stored.
+   * Returns a cleanup function to cancel polling.
+   */
+  pollRemoteSession(sessionId: string, onComplete: () => void, intervalMs: number = 3000): () => void {
+    let cancelled = false;
+    
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const session = await getSession(sessionId);
+        if (session.is_complete) {
+          this.setResults({
+            recommendations: session.recommendations ?? [],
+            mood_profile: session.mood_profile!,
+            merged_mood: session.merged_mood ?? ''
+          } as FriendRecommendResponse);
+          this.setAnswers(session.answers_a);
+          this.setFriendMode(true);
+          this.setMergedMood(session.merged_mood ?? '');
+          onComplete();
+          return;
+        }
+      } catch (e) {
+        console.error('Error polling session status:', e);
+      }
+      
+      if (!cancelled) {
+        setTimeout(poll, intervalMs);
+      }
+    };
+    
+    poll();
+    
+    return () => {
+      cancelled = true;
+    };
+  }
+};
+
+

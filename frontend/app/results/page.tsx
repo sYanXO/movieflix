@@ -7,7 +7,7 @@ import MovieCard from '@/components/MovieCard';
 import ExplainModal from '@/components/ExplainModal';
 import MoodBreakdownModal from '@/components/MoodBreakdownModal';
 import FeedbackWidget from '@/components/FeedbackWidget';
-import { Movie, MoodProfile, RecommendResponse, FriendRecommendResponse, getExplanation } from '@/lib/api';
+import { Movie, MoodProfile, RecommendResponse, FriendRecommendResponse, getExplanation, SessionRepository } from '@/lib/api';
 
 // Build a readable sentence from the mood profile
 function buildVibeSentence(profile: MoodProfile): string {
@@ -40,21 +40,21 @@ export default function ResultsPage() {
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('moodflix_results');
-    if (!raw) { router.replace('/'); return; }
+    const data = SessionRepository.getResults();
+    if (!data) { router.replace('/'); return; }
     try {
-      const data: RecommendResponse | FriendRecommendResponse = JSON.parse(raw);
       setMovies(data.recommendations ?? []);
       setMoodProfile(data.mood_profile ?? null);
       if (data.session_id) setSessionId(data.session_id);
       
-      const answers = sessionStorage.getItem('moodflix_answers');
-      if (answers) setUserAnswers(JSON.parse(answers));
+      const answers = SessionRepository.getAnswers();
+      if (answers) setUserAnswers(answers);
+      
       // Friend mode
-      const friendMode = sessionStorage.getItem('moodflix_friend_mode');
-      if (friendMode === 'true') {
+      const friendMode = SessionRepository.isFriendMode();
+      if (friendMode) {
         setIsFriendMode(true);
-        const mm = sessionStorage.getItem('moodflix_merged_mood');
+        const mm = SessionRepository.getMergedMood();
         if (mm) setMergedMood(mm);
       }
     } catch { router.replace('/'); }
@@ -161,7 +161,7 @@ export default function ResultsPage() {
 
             <button
               id="start-over-btn"
-              onClick={() => { sessionStorage.clear(); router.push('/quiz'); }}
+              onClick={() => { SessionRepository.clearSession(); router.push('/quiz'); }}
               className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground transition-colors px-3 py-1.5"
             >
               <span>↺</span> <span className="hidden sm:inline">Start Over</span>
@@ -242,7 +242,7 @@ export default function ResultsPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="text-center mt-20 flex flex-col items-center gap-4">
           <p className="text-foreground/40 text-sm font-medium">Not quite what you were looking for?</p>
           <button
-            onClick={() => { sessionStorage.clear(); router.push('/quiz'); }}
+            onClick={() => { SessionRepository.clearSession(); router.push('/quiz'); }}
             className="px-8 py-4 rounded-xl border border-border text-foreground/60 hover:text-foreground hover:border-border hover:bg-surface transition-all duration-300 font-bold uppercase tracking-widest text-xs"
           >
             Redo the Quiz

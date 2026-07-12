@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateAdaptiveQuiz, getRecommendations, getFriendRecommendations, createSession, getSession, submitSession, QuestionResponse } from '@/lib/api';
+import { generateAdaptiveQuiz, getRecommendations, getFriendRecommendations, createSession, getSession, submitSession, QuestionResponse, SessionRepository } from '@/lib/api';
 import { useQuizEngine } from './useQuizEngine';
 
 const MAX_QUESTIONS = 5;
@@ -233,9 +233,9 @@ function QuizInner() {
         const fp = personParam ?? (isFriendMode ? 'A' : 'A');
         dispatch({ type: 'INIT_START', payload: { friendPerson: fp, sessionId: null } });
         if (isFriendMode && fp === 'B') {
-          const stored = sessionStorage.getItem('moodflix_answers_a');
+          const stored = SessionRepository.getAnswersA();
           if (stored) {
-             initialAnswersA = JSON.parse(stored);
+             initialAnswersA = stored;
              dispatch({ type: 'INIT_START', payload: { friendPerson: fp, sessionId: null, answersA: initialAnswersA } });
           }
         }
@@ -261,27 +261,11 @@ function QuizInner() {
   useEffect(() => {
     if (status !== 'WAITING_FOR_FRIEND' || !sessionId) return;
     
-    const interval = setInterval(async () => {
-      try {
-        const session = await getSession(sessionId);
-        if (session.is_complete) {
-          clearInterval(interval);
-          sessionStorage.setItem('moodflix_results', JSON.stringify({
-            recommendations: session.recommendations,
-            mood_profile: session.mood_profile,
-            merged_mood: session.merged_mood
-          }));
-          sessionStorage.setItem('moodflix_answers', JSON.stringify(session.answers_a));
-          sessionStorage.setItem('moodflix_friend_mode', 'true');
-          sessionStorage.setItem('moodflix_merged_mood', session.merged_mood ?? '');
-          router.push('/results');
-        }
-      } catch (e) {
-        console.error('Error polling session status:', e);
-      }
-    }, 3000);
+    const cancelPoll = SessionRepository.pollRemoteSession(sessionId, () => {
+      router.push('/results');
+    });
 
-    return () => clearInterval(interval);
+    return () => cancelPoll();
   }, [status, sessionId, router]);
 
   const fetchNextQuestion = async (currentAnswers: Record<string, string>) => {
@@ -312,35 +296,14 @@ function QuizInner() {
 
   const handleFinal = async (finalAnswers: Record<string, string>) => {
     if (isFriendMode && friendPerson === 'A') {
-      sessionStorage.setItem('moodflix_answers_a', JSON.stringify(finalAnswers));
+      SessionRepository.setAnswersA(finalAnswers);
       dispatch({ type: 'HANDOFF_CHOICE', payload: { finalAnswers } });
       return;
     }
 
     dispatch({ type: 'SUBMIT_START' });
     try {
-      if (isFriendMode && friendPerson === 'B') {
-        if (sessionId) {
-          const data = await submitSession(sessionId, finalAnswers);
-          sessionStorage.setItem('moodflix_results', JSON.stringify(data));
-          sessionStorage.setItem('moodflix_answers', JSON.stringify(finalAnswers));
-          sessionStorage.setItem('moodflix_friend_mode', 'true');
-          sessionStorage.setItem('moodflix_merged_mood', data.merged_mood ?? '');
-        } else {
-          const storedA = sessionStorage.getItem('moodflix_answers_a');
-          const aAnswers = storedA ? JSON.parse(storedA) : answersA;
-          const data = await getFriendRecommendations(aAnswers, finalAnswers);
-          sessionStorage.setItem('moodflix_results', JSON.stringify(data));
-          sessionStorage.setItem('moodflix_answers', JSON.stringify(finalAnswers));
-          sessionStorage.setItem('moodflix_friend_mode', 'true');
-          sessionStorage.setItem('moodflix_merged_mood', data.merged_mood ?? '');
-        }
-      } else {
-        const data = await getRecommendations(finalAnswers);
-        sessionStorage.setItem('moodflix_results', JSON.stringify(data));
-        sessionStorage.setItem('moodflix_answers', JSON.stringify(finalAnswers));
-        sessionStorage.removeItem('moodflix_friend_mode');
-      }
+      await SessionRepository.finalizeQuiz(finalAnswers, isFriendMode, friendPerson, sessionId);
       router.push('/results');
     } catch (e) {
       dispatch({ type: 'SET_ERROR', payload: (e as Error).message });
