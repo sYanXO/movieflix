@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateAdaptiveQuiz, getRecommendations, getFriendRecommendations, createSession, getSession, submitSession, QuestionResponse } from '@/lib/api';
+import { useQuizEngine } from './useQuizEngine';
 
 const MAX_QUESTIONS = 5;
 
@@ -22,13 +23,6 @@ const cleanErrorMessage = (err: string) => {
     return 'Backend is warming up. Try clicking again in a few seconds.';
   return err;
 };
-
-interface HistoryEntry {
-  question: QuestionResponse;
-  questionNum: number;
-  answers: Record<string, string>;
-  upcoming: QuestionResponse[];
-}
 
 // ─── Local Handoff Screen (Pass the Phone) ───────────────────────
 function HandoffScreen({ onContinue }: { onContinue: () => void }) {
@@ -205,49 +199,45 @@ function QuizInner() {
   const sessionIdParam = searchParams.get('session_id');
   const isFriendMode = searchParams.get('mode') === 'friend' || !!sessionIdParam;
   
-  const [friendPerson, setFriendPerson] = useState<'A' | 'B'>('A');
-  const [answersA, setAnswersA] = useState<Record<string, string>>({});
-  const [showHandoff, setShowHandoff] = useState(false);
-  const [showHandoffChoice, setShowHandoffChoice] = useState(false);
-  const [isFriendWaiting, setIsFriendWaiting] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [state, dispatch] = useQuizEngine();
+  const {
+    status, friendPerson, answersA, sessionId, copied,
+    answers, currentQ, upcomingQuestions, questionNum,
+    error, selectedOption, multiSelected, history
+  } = state;
 
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [currentQ, setCurrentQ] = useState<QuestionResponse | null>(null);
-  const [upcomingQuestions, setUpcomingQuestions] = useState<QuestionResponse[]>([]);
-  const [questionNum, setQuestionNum] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const showHandoff = status === 'HANDOFF_LOCAL';
+  const showHandoffChoice = status === 'HANDOFF_CHOICE';
+  const isFriendWaiting = status === 'WAITING_FOR_FRIEND';
+  const isLoading = status === 'INITIALIZING' || status === 'LOADING_NEXT_QUESTION';
+  const isSubmitting = status === 'SUBMITTING';
 
   useEffect(() => {
     const loadQuiz = async () => {
-      setIsLoading(true);
-      setError(null);
-      
       const sessionParam = searchParams.get('session_id');
       const personParam = searchParams.get('person') as 'A' | 'B';
       
+      let initialAnswersA: Record<string, string> | undefined = undefined;
+
       if (sessionParam) {
-        setSessionId(sessionParam);
-        setFriendPerson('B');
+        dispatch({ type: 'INIT_START', payload: { friendPerson: 'B', sessionId: sessionParam } });
         try {
           const session = await getSession(sessionParam);
-          setAnswersA(session.answers_a ?? {});
+          initialAnswersA = session.answers_a ?? {};
+          dispatch({ type: 'INIT_START', payload: { friendPerson: 'B', sessionId: sessionParam, answersA: initialAnswersA } });
         } catch {
-          setError('Invalid or expired remote sharing session link. Please start a new session.');
-          setIsLoading(false);
+          dispatch({ type: 'SET_ERROR', payload: 'Invalid or expired remote sharing session link. Please start a new session.' });
           return;
         }
       } else {
-        setFriendPerson(personParam ?? (isFriendMode ? 'A' : 'A'));
-        if (isFriendMode && personParam === 'B') {
+        const fp = personParam ?? (isFriendMode ? 'A' : 'A');
+        dispatch({ type: 'INIT_START', payload: { friendPerson: fp, sessionId: null } });
+        if (isFriendMode && fp === 'B') {
           const stored = sessionStorage.getItem('moodflix_answers_a');
-          if (stored) setAnswersA(JSON.parse(stored));
+          if (stored) {
+             initialAnswersA = JSON.parse(stored);
+             dispatch({ type: 'INIT_START', payload: { friendPerson: fp, sessionId: null, answersA: initialAnswersA } });
+          }
         }
       }
       
@@ -257,12 +247,9 @@ function QuizInner() {
           options: ["Exhausting", "Rollercoaster", "Chill", "Productive"],
           is_final: false
         };
-        setCurrentQ(starter);
-        setQuestionNum(1);
+        dispatch({ type: 'INIT_SUCCESS', payload: { currentQ: starter } });
       } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setIsLoading(false);
+        dispatch({ type: 'SET_ERROR', payload: (e as Error).message });
       }
     };
     
@@ -272,7 +259,7 @@ function QuizInner() {
 
   // Polling logic for Person A waiting screen
   useEffect(() => {
-    if (!isFriendWaiting || !sessionId) return;
+    if (status !== 'WAITING_FOR_FRIEND' || !sessionId) return;
     
     const interval = setInterval(async () => {
       try {
@@ -295,22 +282,17 @@ function QuizInner() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [isFriendWaiting, sessionId, router]);
+  }, [status, sessionId, router]);
 
   const fetchNextQuestion = async (currentAnswers: Record<string, string>) => {
-    setIsLoading(true);
-    setError(null);
-    setSelectedOption(null);
-    setMultiSelected(new Set());
+    dispatch({ type: 'NEXT_QUESTION_START', payload: { newAnswers: currentAnswers } });
     
     try {
       if (questionNum === 1) {
         // Single LLM call to generate the rest of the custom quiz
         const res = await generateAdaptiveQuiz(currentAnswers["q1"]);
-        setUpcomingQuestions(res.questions);
         if (res.questions.length > 0) {
-          setCurrentQ(res.questions[0]);
-          setQuestionNum(2);
+          dispatch({ type: 'NEXT_QUESTION_SUCCESS', payload: { currentQ: res.questions[0], upcomingQuestions: res.questions } });
         } else {
           await handleFinal(currentAnswers);
         }
@@ -318,30 +300,24 @@ function QuizInner() {
         // Pop the next generated question from local state
         const nextIndex = questionNum - 1;
         if (nextIndex < upcomingQuestions.length) {
-          setCurrentQ(upcomingQuestions[nextIndex]);
-          setQuestionNum(prev => prev + 1);
+          dispatch({ type: 'NEXT_QUESTION_SUCCESS', payload: { currentQ: upcomingQuestions[nextIndex] } });
         } else {
           await handleFinal(currentAnswers);
         }
       }
     } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setIsLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: (e as Error).message });
     }
   };
 
   const handleFinal = async (finalAnswers: Record<string, string>) => {
     if (isFriendMode && friendPerson === 'A') {
       sessionStorage.setItem('moodflix_answers_a', JSON.stringify(finalAnswers));
-      setAnswersA(finalAnswers);
-      setShowHandoffChoice(true);
-      setIsLoading(false);
-      setIsSubmitting(false);
+      dispatch({ type: 'HANDOFF_CHOICE', payload: { finalAnswers } });
       return;
     }
 
-    setIsSubmitting(true);
+    dispatch({ type: 'SUBMIT_START' });
     try {
       if (isFriendMode && friendPerson === 'B') {
         if (sessionId) {
@@ -367,27 +343,21 @@ function QuizInner() {
       }
       router.push('/results');
     } catch (e) {
-      setError((e as Error).message);
-      setIsSubmitting(false);
+      dispatch({ type: 'SET_ERROR', payload: (e as Error).message });
     }
   };
 
   const handleSelectLocal = () => {
-    setShowHandoffChoice(false);
-    setShowHandoff(true);
+    dispatch({ type: 'HANDOFF_LOCAL' });
   };
 
   const handleSelectRemote = async () => {
-    setIsSubmitting(true);
+    dispatch({ type: 'HANDOFF_REMOTE_START' });
     try {
       const res = await createSession(answersA);
-      setSessionId(res.session_id);
-      setShowHandoffChoice(false);
-      setIsFriendWaiting(true);
+      dispatch({ type: 'HANDOFF_REMOTE_SUCCESS', payload: { sessionId: res.session_id } });
     } catch (e) {
-      setError('Failed to create remote sharing session. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to create remote sharing session. Please try again.' });
     }
   };
 
@@ -395,79 +365,52 @@ function QuizInner() {
     if (!sessionId) return;
     const shareUrl = `${window.location.origin}/quiz?session_id=${sessionId}&mode=friend&person=B`;
     navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      dispatch({ type: 'COPY_LINK_SUCCESS' });
+      setTimeout(() => dispatch({ type: 'RESET_COPY_LINK' }), 2500);
     });
   };
 
   const startPersonB = () => {
-    setShowHandoff(false);
-    setFriendPerson('B');
-    setAnswers({});
-    setHistory([]);
-    setQuestionNum(0);
-    setCurrentQ(null);
-    setUpcomingQuestions([]);
-    
-    // Reset to starter question
     const starter: QuestionResponse = {
       question: "How would you describe your week so far?",
       options: ["Exhausting", "Rollercoaster", "Chill", "Productive"],
       is_final: false
     };
-    setCurrentQ(starter);
-    setQuestionNum(1);
+    dispatch({ type: 'START_PERSON_B', payload: { currentQ: starter } });
   };
 
   const handleAnswer = async (option: string) => {
     if (!currentQ) return;
-    setHistory(prev => [...prev, { question: currentQ, questionNum, answers, upcoming: upcomingQuestions }]);
-    setSelectedOption(option);
+    dispatch({ type: 'ANSWER_SELECT', payload: { option, currentQ } });
     await new Promise(r => setTimeout(r, 200));
     const qKey = `q${questionNum}`;
     const newAnswers = { ...answers, [qKey]: option };
-    setAnswers(newAnswers);
     await fetchNextQuestion(newAnswers);
   };
 
   const toggleMulti = (option: string) => {
     const noneOption = currentQ?.options.find(o => o.toLowerCase().includes('nope') || o.toLowerCase().includes('anything goes'));
-    setMultiSelected(prev => {
-      const next = new Set(prev);
-      if (option === noneOption) return next.has(option) ? new Set() : new Set([option]);
-      if (next.has(option)) { next.delete(option); }
-      else { if (noneOption) next.delete(noneOption); next.add(option); }
-      return next;
-    });
+    dispatch({ type: 'MULTI_TOGGLE', payload: { option, noneOption } });
   };
 
   const submitMultiSelect = async () => {
     if (!currentQ) return;
-    setHistory(prev => [...prev, { question: currentQ, questionNum, answers, upcoming: upcomingQuestions }]);
+    dispatch({ type: 'SUBMIT_MULTI_SELECT', payload: { currentQ } });
     const value = multiSelected.size === 0 ? 'Nope, anything goes' : Array.from(multiSelected).join(', ');
     const qKey = `q${questionNum}`;
     const newAnswers = { ...answers, [qKey]: value };
-    setAnswers(newAnswers);
     await fetchNextQuestion(newAnswers);
   };
 
   const handleBack = () => {
     if (history.length === 0) { router.push('/'); return; }
-    const prev = history[history.length - 1];
-    setHistory(h => h.slice(0, -1));
-    setCurrentQ(prev.question);
-    setQuestionNum(prev.questionNum);
-    setAnswers(prev.answers);
-    setUpcomingQuestions(prev.upcoming);
-    setSelectedOption(null);
-    setMultiSelected(new Set());
-    setError(null);
+    dispatch({ type: 'BACK' });
   };
 
   const isMulti = currentQ ? isMultiSelectQuestion(currentQ) : false;
 
   useEffect(() => {
-    if (!currentQ || isLoading || isSubmitting || error || showHandoff || showHandoffChoice || isFriendWaiting) return;
+    if (!currentQ || status !== 'TAKING_QUIZ' || error) return;
     const handleKey = (e: KeyboardEvent) => {
       const num = parseInt(e.key);
       if (!isNaN(num) && num >= 1 && num <= currentQ.options.length) {
@@ -480,7 +423,7 @@ function QuizInner() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQ, isLoading, isSubmitting, error, isMulti, multiSelected, showHandoff, showHandoffChoice, isFriendWaiting]);
+  }, [currentQ, status, error, isMulti, multiSelected]);
 
   const maxTotalQuestions = Math.max(MAX_QUESTIONS, upcomingQuestions.length + 1);
   const progressPercent = Math.min(((questionNum - 1) / maxTotalQuestions) * 100, 100);
@@ -556,7 +499,7 @@ function QuizInner() {
             <HandoffScreen key="handoff" onContinue={startPersonB} />
           )}
 
-          {!showHandoff && !showHandoffChoice && !isFriendWaiting && (isLoading || isSubmitting) && (
+          {!showHandoff && !showHandoffChoice && !isFriendWaiting && (isLoading || isSubmitting) && !error && (
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center gap-6 py-32">
               <div className="relative w-12 h-12 flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
@@ -566,12 +509,19 @@ function QuizInner() {
             </motion.div>
           )}
 
-          {!showHandoff && !showHandoffChoice && !isFriendWaiting && error && !isLoading && (
+          {!showHandoff && !showHandoffChoice && !isFriendWaiting && error && (
             <motion.div key="error" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="cinematic-glass rounded-2xl p-8 text-center border-red-500/20">
               <div className="text-4xl mb-4">⚠️</div>
               <h3 className="font-display font-bold text-xl mb-3 text-foreground">Something went wrong</h3>
               <p className="text-foreground/60 text-sm leading-relaxed mb-8">{cleanErrorMessage(error)}</p>
-              <button onClick={() => { setError(null); fetchNextQuestion(answers); }} className="cinematic-btn w-full py-4 rounded-xl">Try again</button>
+              <button onClick={() => { 
+                dispatch({ type: 'CLEAR_ERROR' }); 
+                if (status === 'INITIALIZING') {
+                  window.location.reload();
+                } else {
+                  fetchNextQuestion(answers); 
+                }
+              }} className="cinematic-btn w-full py-4 rounded-xl">Try again</button>
             </motion.div>
           )}
 
