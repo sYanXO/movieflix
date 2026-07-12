@@ -162,7 +162,7 @@ func (c *Client) ReRank(ctx context.Context, profile *models.MoodProfile, candid
 			i+1, m.ID, m.Title, m.Year, genres, truncate(m.Overview, 150)))
 	}
 
-	prompt := fmt.Sprintf(`User mood profile:
+	fallback := `User mood profile:
 %s
 
 I've found these candidate movies (sorted by vector similarity):
@@ -176,7 +176,15 @@ Respond ONLY with valid JSON (no markdown):
     ...
   ],
   "reasoning": "Brief overall reasoning"
-}`, string(profileJSON), movieList.String())
+}`
+
+	template := fallback
+	if c.prompts != nil {
+		if t, err := c.prompts.GetActivePrompt(ctx, "ReRank", fallback); err == nil {
+			template = t
+		}
+	}
+	prompt := fmt.Sprintf(template, string(profileJSON), movieList.String())
 
 	raw, err := c.generate(ctx, prompt)
 	if err != nil {
@@ -235,7 +243,7 @@ func (c *Client) Explain(ctx context.Context, profile *models.MoodProfile, answe
 	answersJSON, _ := json.Marshal(answers)
 	profileJSON, _ := json.Marshal(profile)
 
-	prompt := fmt.Sprintf(`User answered:
+	fallback := `User answered:
 %s
 
 This generated mood profile:
@@ -246,7 +254,16 @@ Title: %s
 Plot: %s
 Genres: %s
 
-Why did we pick this? Respond in 1-2 sentences, casual and enthusiastic tone. No bullet points, just plain text.`,
+Why did we pick this? Respond in 1-2 sentences, casual and enthusiastic tone. No bullet points, just plain text.`
+
+	template := fallback
+	if c.prompts != nil {
+		if t, err := c.prompts.GetActivePrompt(ctx, "Explain", fallback); err == nil {
+			template = t
+		}
+	}
+
+	prompt := fmt.Sprintf(template,
 		string(answersJSON),
 		string(profileJSON),
 		movie.Title,
@@ -267,7 +284,7 @@ func truncate(s string, max int) string {
 func (c *Client) MoodBreakdown(ctx context.Context, profile *models.MoodProfile) (*models.MoodBreakdownResponse, error) {
 	profileJSON, _ := json.Marshal(profile)
 
-	prompt := fmt.Sprintf(`Given this cinematic mood profile:
+	fallback := `Given this cinematic mood profile:
 %s
 
 Score 6-8 cinematic attributes as percentages (0-100) that describe this viewer's taste.
@@ -283,7 +300,15 @@ Respond ONLY with valid JSON (no markdown):
     ...
   ],
   "persona": "The Brooding Auteur"
-}`, string(profileJSON))
+}`
+
+	template := fallback
+	if c.prompts != nil {
+		if t, err := c.prompts.GetActivePrompt(ctx, "MoodBreakdown", fallback); err == nil {
+			template = t
+		}
+	}
+	prompt := fmt.Sprintf(template, string(profileJSON))
 
 	raw, err := c.generate(ctx, prompt)
 	if err != nil {
@@ -302,7 +327,7 @@ func (c *Client) MergeMoodProfiles(ctx context.Context, profileA, profileB *mode
 	profileAJSON, _ := json.Marshal(profileA)
 	profileBJSON, _ := json.Marshal(profileB)
 
-	prompt := fmt.Sprintf(`Two friends want to watch a movie together. Here are their individual mood profiles:
+	fallback := `Two friends want to watch a movie together. Here are their individual mood profiles:
 
 Person A: %s
 
@@ -325,7 +350,15 @@ Respond ONLY with valid JSON (no markdown):
     "keywords_to_boost": [],
     "keywords_to_avoid": []
   }
-}`, string(profileAJSON), string(profileBJSON))
+}`
+
+	template := fallback
+	if c.prompts != nil {
+		if t, err := c.prompts.GetActivePrompt(ctx, "MergeMoodProfiles", fallback); err == nil {
+			template = t
+		}
+	}
+	prompt := fmt.Sprintf(template, string(profileAJSON), string(profileBJSON))
 
 	raw, err := c.generate(ctx, prompt)
 	if err != nil {

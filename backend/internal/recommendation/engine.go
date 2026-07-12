@@ -103,10 +103,10 @@ func (e *DefaultRecommendationEngine) GetRecommendations(ctx context.Context, an
 				return nil, fmt.Errorf("embedding failed: %w", embedErr)
 			}
 		} else {
-			// Vector Search
-			candidates, err = db.VectorSearch(ctx, e.dbPool, embedding, 50)
+			// Hybrid Search (Vector + Genre Filtering)
+			candidates, err = db.HybridSearch(ctx, e.dbPool, embedding, profile.Genres, 50)
 			if err != nil {
-				return nil, fmt.Errorf("vector search failed: %w", err)
+				return nil, fmt.Errorf("hybrid search failed: %w", err)
 			}
 		}
 	}
@@ -253,10 +253,10 @@ func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Conte
 			return nil, fmt.Errorf("embedding failed: %w", embedErr)
 		}
 	} else {
-		// Vector search
-		candidates, err = db.VectorSearch(ctx, e.dbPool, embedding, 50)
+		// Hybrid search
+		candidates, err = db.HybridSearch(ctx, e.dbPool, embedding, mergedProfile.Genres, 50)
 		if err != nil {
-			return nil, fmt.Errorf("vector search failed: %w", err)
+			return nil, fmt.Errorf("hybrid search failed: %w", err)
 		}
 	}
 

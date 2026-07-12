@@ -10,24 +10,46 @@ import (
 	"moodflix/internal/models"
 )
 
-// VectorSearch returns the top `limit` movies by cosine similarity to the given embedding.
-func VectorSearch(ctx context.Context, pool *pgxpool.Pool, embedding []float32, limit int) ([]models.Movie, error) {
+// HybridSearch returns the top `limit` movies by cosine similarity, strictly filtered by genres if provided.
+func HybridSearch(ctx context.Context, pool *pgxpool.Pool, embedding []float32, genres []string, limit int) ([]models.Movie, error) {
 	vec := pgvector.NewVector(embedding)
 
-	rows, err := pool.Query(ctx, `
-		SELECT
-			id, COALESCE(tmdb_id, 0), title, COALESCE(year, 0),
-			COALESCE(overview, ''), COALESCE(genres, '{}'),
-			COALESCE(keywords, '{}'), COALESCE(runtime, 0),
-			COALESCE(language, ''), COALESCE(rating, 0.0),
-			COALESCE(poster_url, '')
-		FROM movies
-		WHERE embedding IS NOT NULL
-		ORDER BY embedding <=> $1
-		LIMIT $2
-	`, vec, limit)
+	var query string
+	var args []interface{}
+
+	if len(genres) > 0 {
+		query = `
+			SELECT
+				id, COALESCE(tmdb_id, 0), title, COALESCE(year, 0),
+				COALESCE(overview, ''), COALESCE(genres, '{}'),
+				COALESCE(keywords, '{}'), COALESCE(runtime, 0),
+				COALESCE(language, ''), COALESCE(rating, 0.0),
+				COALESCE(poster_url, '')
+			FROM movies
+			WHERE embedding IS NOT NULL AND genres && $2
+			ORDER BY embedding <=> $1
+			LIMIT $3
+		`
+		args = []interface{}{vec, genres, limit}
+	} else {
+		query = `
+			SELECT
+				id, COALESCE(tmdb_id, 0), title, COALESCE(year, 0),
+				COALESCE(overview, ''), COALESCE(genres, '{}'),
+				COALESCE(keywords, '{}'), COALESCE(runtime, 0),
+				COALESCE(language, ''), COALESCE(rating, 0.0),
+				COALESCE(poster_url, '')
+			FROM movies
+			WHERE embedding IS NOT NULL
+			ORDER BY embedding <=> $1
+			LIMIT $2
+		`
+		args = []interface{}{vec, limit}
+	}
+
+	rows, err := pool.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("vector search query: %w", err)
+		return nil, fmt.Errorf("hybrid search query: %w", err)
 	}
 	defer rows.Close()
 
@@ -43,6 +65,12 @@ func VectorSearch(ctx context.Context, pool *pgxpool.Pool, embedding []float32, 
 		}
 		movies = append(movies, m)
 	}
+	
+	// Fallback to pure vector search if genre filtering is too strict and returns nothing
+	if len(movies) == 0 && len(genres) > 0 {
+		return HybridSearch(ctx, pool, embedding, nil, limit)
+	}
+
 	return movies, rows.Err()
 }
 
