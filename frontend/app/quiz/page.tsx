@@ -8,10 +8,7 @@ import { useQuizEngine } from './useQuizEngine';
 
 const MAX_QUESTIONS = 5;
 
-const MULTI_SELECT_KEYWORDS = ['dealbreaker', 'avoid', 'not okay', 'nope', 'never'];
-const isMultiSelectQuestion = (q: QuestionResponse) =>
-  MULTI_SELECT_KEYWORDS.some(kw => q.question.toLowerCase().includes(kw)) ||
-  q.options.some(o => o.toLowerCase().includes('gore') || o.toLowerCase().includes('romance') || o.toLowerCase().includes('subtitle'));
+
 
 const cleanErrorMessage = (err: string) => {
   const msg = err.toLowerCase();
@@ -370,7 +367,7 @@ function QuizInner() {
     dispatch({ type: 'BACK' });
   };
 
-  const isMulti = currentQ ? isMultiSelectQuestion(currentQ) : false;
+  const isMulti = currentQ ? (currentQ.is_multi_select ?? false) : false;
 
   useEffect(() => {
     if (!currentQ || status !== 'TAKING_QUIZ' || error) return;

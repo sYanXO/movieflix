@@ -31,9 +31,10 @@ type Movie struct {
 
 // QuestionResponse is returned by POST /api/question.
 type QuestionResponse struct {
-	Question string   `json:"question"`
-	Options  []string `json:"options"`
-	IsFinal  bool     `json:"is_final"`
+	Question      string   `json:"question"`
+	Options       []string `json:"options"`
+	IsFinal       bool     `json:"is_final"`
+	IsMultiSelect bool     `json:"is_multi_select"`
 }
 
 // RecommendRequest is the request body for POST /api/recommend.

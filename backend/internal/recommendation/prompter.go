@@ -47,7 +47,8 @@ Respond ONLY with valid JSON (no markdown):
   {
     "question": "exact question text",
     "options": ["option1", "option2", ...],
-    "is_final": false
+    "is_final": false,
+    "is_multi_select": false
   }
 ]`
 

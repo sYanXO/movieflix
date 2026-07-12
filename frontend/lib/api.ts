@@ -4,6 +4,7 @@ export interface QuestionResponse {
   question: string;
   options: string[];
   is_final: boolean;
+  is_multi_select?: boolean;
 }
 
 export interface Movie {

@@ -14,7 +14,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_active_prompt ON prompts (name) WHERE stat
 -- Seed the initial prompts
 INSERT INTO prompts (name, content, version, status, notes) VALUES (
   'GenerateAdaptiveQuiz',
-  'The user was asked: "How would you describe your week so far?"\nThey answered: "%s"\n\nGenerate exactly 3 highly creative, personalized, multi-choice questions to narrow down what movie they should watch. \nEach question should have 3-4 options. \n\nRespond ONLY with valid JSON (no markdown):\n[\n  {\n    "question": "exact question text",\n    "options": ["option1", "option2", ...],\n    "is_final": false\n  },\n  ...\n]',
+  'The user was asked: "How would you describe your week so far?"\nThey answered: "%s"\n\nGenerate exactly 3 highly creative, personalized, multi-choice questions to narrow down what movie they should watch. \nEach question should have 3-4 options. \n\nRespond ONLY with valid JSON (no markdown):\n[\n  {\n    "question": "exact question text",\n    "options": ["option1", "option2", ...],\n    "is_final": false,\n    "is_multi_select": false\n  },\n  ...\n]',
   1,
   'active',
   'Initial version from source code'

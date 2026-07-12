@@ -11,7 +11,7 @@ The **RecommendationEngine** is a deep module that acts as the single primary en
 * **Seam:** Defined as an interface to act as a test surface, allowing the engine to be fully mocked for HTTP route unit tests.
 
 ### MoodProfile (Concept)
-A structured representation of a user's cinematic preferences generated from their answers. It includes the desired mood, pacing, tone, ending type, genres to match, and dealbreakers (like gore, romance, or subtitles) to exclude.
+A structured representation of a user's cinematic preferences generated from their answers. It includes the desired mood, pacing, tone, ending type, genres to match, and dealbreakers (like gore, romance, or subtitles) to exclude. **Note on Dealbreakers:** The rules determining whether a question is a dealbreaker (multi-select) belong strictly to the backend `LLMPrompter`, passed to the frontend via an explicit API contract, completely removing brittle heuristic logic from the frontend.
 
 ### VectorSearch (Concept)
 The process of matching the user's semantic mood profile embedding against pre-computed movie description embeddings in PostgreSQL using the pgvector cosine similarity operator.
@@ -24,3 +24,9 @@ A generic, deep interface representing the capability to generate text from a pr
 
 ### LLMPrompter (Module)
 A domain module responsible for fetching prompt templates (via `PromptManager`), formatting strings with domain context, calling the `LLMAdapter`, and parsing the raw JSON response back into strongly-typed domain models. Provides high locality for prompt engineering.
+
+### QuizEngine (Module)
+A pure state machine reducer that manages the frontend quiz progression, multi-user handoffs, and remote session waiting logic. By exposing an explicit `status` state, it acts as a deep seam between the pure transition rules of the quiz and the side-effect-heavy UI rendering and networking logic.
+
+### SessionRepository (Module)
+A deep frontend data layer that abstracts network requests (`fetch`) and browser persistence (`sessionStorage`). It exposes high-level operations for syncing quiz state, finalizing results, and polling remote sessions, completely isolating the UI components from storage semantics and providing graceful in-memory fallbacks when browser storage is blocked.
