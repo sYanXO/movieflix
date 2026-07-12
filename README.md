@@ -6,65 +6,47 @@
 
 ---
 
-## 🚀 Key Features
+## 🚀 Features & Implementation
 
-- **Adaptive AI Quiz**: Generates a set of 3 highly context-specific, creative questions dynamically based on your starter mood using `gemini-3.1-flash-lite`.
-- **Hybrid Semantic Vector Search**: Embeds your computed mood profile via `gemini-embedding-001` (768 dimensions) and retrieves candidate movies from PostgreSQL using `pgvector` cosine similarity.
-- **Advanced AI Reranking**: Uses Gemini to filter dealbreakers and rerank candidates to curate the perfect top 5 matches.
-- **Cinematic Mood Breakdown & Personas**: Renders detailed attribute breakdowns (scores 0-100) and assigns a fun viewer persona (e.g. *"The Brooding Auteur"*, *"The Cozy Escapist"*, *"The Adrenaline Junkie"*).
-- **Friend Mode (Local & Remote Session Sharing)**: 
-  - **Local**: Take the quiz together and merge responses for a co-watching pick.
-  - **Remote**: Create a shareable session link. User A plays, sends the link to User B, and the backend automatically merges their profiles once User B submits.
-- **Smart Poster Proxy with DuckDuckGo Fallback**: Streams TMDB posters directly. If posters are missing or fail, it automatically triggers a background DuckDuckGo image search to scrape posters and caches them back to the database.
-- **In-Memory Cache**: Caches identical recommendation paths for near-instant responses (<1ms) and zero redundant API costs.
+- **Adaptive AI Quiz Generation**
+  - *Implementation:* Single-shot adaptive AI quiz generation using `gemini-3.1-flash-lite` to prevent rate limits. Asks context-specific day/week vibe questions.
+  - *Main:* Gemini LLM dynamically generates options based on previous answers.
+  - *Fallback:* Hardcoded static mood questions if API rate limits are hit or the LLM fails.
 
----
+- **Hybrid Semantic Vector Search**
+  - *Implementation:* Embeds computed mood profile via `gemini-embedding-001` (768 dimensions) and retrieves candidate movies from PostgreSQL using `pgvector` cosine similarity.
+  - *Main:* Vector similarity search using precomputed Gemini embeddings.
+  - *Fallback:* Standard keyword/genre filtering if vector search returns low confidence.
 
-## 🛠️ Setup & Installation
+- **Vector Space Visualizer**
+  - *Implementation:* Renders the embedding space of movies to show how recommendations cluster.
+  - *Main:* Uses Gemini LLM query classification to map user intents to visual clusters accurately.
+  - *Fallback:* Basic 2D PCA projection of vector space if LLM classification fails.
 
-### Prerequisites
+- **Self-Improving Prompt Loop & Reranking**
+  - *Implementation:* Uses Gemini to filter dealbreakers, rerank candidates, and refine prompts based on user behavior to curate the top 5 matches.
+  - *Main:* AI reranking with dealbreaker validation and friend mode feedback.
+  - *Fallback:* Database-level popularity/rating sorting if AI reranking fails.
 
-- **Docker & Docker Compose**
-- **Go 1.22+**
-- **Node.js 20+**
-- [**Gemini API Key**](https://aistudio.google.com) (free or pay-as-you-go)
-- `movies_metadata.csv` from [Kaggle](https://www.kaggle.com/datasets/rounakbanik/the-movies-dataset)
+- **Cinematic Mood Breakdown & Personas**
+  - *Implementation:* Analyzes the final `MoodProfile` to render detailed attribute breakdowns (scores 0-100) and assigns a fun viewer persona (e.g., *"The Brooding Auteur"*).
+  - *Main:* AI-generated dynamic personas and dynamic scores.
+  - *Fallback:* Preset static personas mapped to genres.
 
----
+- **Friend Mode (Local & Remote Session Sharing)**
+  - *Implementation:* Orchestrates recommendation duplicate consolidation into the `RecommendationEngine` with parallel parsing and incorporates feedback loops.
+  - *Main:* Syncs remote sessions where User A and User B share a link, merging their profiles via the backend automatically once User B submits.
+  - *Fallback:* Local session merge (taking the quiz together on one device) if real-time remote syncing drops.
 
-### Step-by-Step Setup
+- **Smart Poster Proxy**
+  - *Implementation:* Proxies movie poster streaming directly to the client.
+  - *Main:* Official TMDB poster API.
+  - *Fallback:* Background DuckDuckGo image search to scrape posters and cache them back to the database if TMDB posters are missing or fail.
 
-#### 1. Spin up the database
-Runs a PostgreSQL container with the `pgvector` extension pre-installed on port `5433` (mapped from `5432` internally).
-```bash
-docker-compose up -d
-```
-
-#### 2. Configure the Backend Environment
-```bash
-cd backend
-cp .env.example .env
-# Edit .env and set your GEMINI_API_KEY
-```
-
-#### 3. Ingest Movie Dataset
-Place `movies_metadata.csv` inside `backend/data/movies_metadata.csv`. Then run the ingestion script to parse, embed, and store the movies:
-```bash
-cd backend
-go run scripts/ingest/main.go
-# Uses gemini-embedding-001 (768-dim) to precompute embeddings.
-# Rate-limited (650ms delay) to safely run on Gemini Free Tier.
-# Takes ~10–15 min for 5,000 movies. Resumable if interrupted.
-```
-
-#### 4. Run the Dev Environment
-You can start both the Go server and the Next.js client concurrently using the root dev script:
-```bash
-./dev.sh
-```
-*Alternatively, run them separately:*
-- **Backend (http://localhost:8080)**: `cd backend && go run cmd/server/main.go`
-- **Frontend (http://localhost:3000)**: `cd frontend && npm install && npm run dev`
+- **In-Memory Caching**
+  - *Implementation:* Caches identical recommendation paths for near-instant responses (<1ms) and zero redundant API costs.
+  - *Main:* In-Memory application caching.
+  - *Fallback:* Direct database/LLM queries on cache miss.
 
 ---
 
@@ -73,8 +55,8 @@ You can start both the Go server and the Next.js client concurrently using the r
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | **GET** | `/health` | Server health check |
-| **POST** | `/api/generate-quiz` | Generates 3 dynamic, context-specific questions based on a starter mood. |
-| **POST** | `/api/recommend` | Evaluates quiz answers to return 5 movie recommendations and a `MoodProfile`. |
+| **POST** | `/api/generate-quiz` | Generates dynamic, context-specific questions based on a starter mood. |
+| **POST** | `/api/recommend` | Evaluates quiz answers to return movie recommendations and a `MoodProfile`. |
 | **POST** | `/api/recommend-friends` | Merges two sets of local answers to generate shared recommendations. |
 | **POST** | `/api/explain` | Generates a 1-2 sentence AI explanation for a given movie recommendation. |
 | **POST** | `/api/mood-breakdown` | Analyzes a `MoodProfile` to return attribute scores and a viewer persona. |
@@ -85,126 +67,11 @@ You can start both the Go server and the Next.js client concurrently using the r
 
 ---
 
-### Request/Response Payload Details
-
-<details>
-<summary>1. <code>POST /api/generate-quiz</code></summary>
-
-**Request:**
-```json
-{
-  "starter_answer": "It's been a long, stressful week."
-}
-```
-**Response:**
-```json
-{
-  "questions": [
-    {
-      "question": "What level of mental energy do you have left?",
-      "options": ["Complete brain-off escape", "Ready for a slow-burn thriller", "Stimulating mystery"],
-      "is_final": false
-    },
-    ...
-  ]
-}
-```
-</details>
-
-<details>
-<summary>2. <code>POST /api/recommend</code></summary>
-
-**Request:**
-```json
-{
-  "answers": {
-    "q1": "Stressful week",
-    "q2": "Complete brain-off escape",
-    "q3": "Mindless comedy"
-  }
-}
-```
-**Response:**
-```json
-{
-  "recommendations": [
-    {
-      "id": 12,
-      "tmdb_id": 550,
-      "title": "Fight Club",
-      "year": 1999,
-      "overview": "An insomniac office worker...",
-      "genres": ["Drama", "Thriller"],
-      "keywords": ["anarchy", "split persona"],
-      "runtime": 139,
-      "language": "en",
-      "rating": 8.4,
-      "poster_url": "/path/to/poster.jpg"
-    }
-  ],
-  "mood_profile": {
-    "mood": "stress relief",
-    "pace": "fast",
-    "tone": "dark humor",
-    "ending": "any",
-    "violence": "medium",
-    "focus_required": "low",
-    "genres": ["Comedy", "Action"],
-    "dealbreakers": [],
-    "keywords_to_boost": [],
-    "keywords_to_avoid": []
-  }
-}
-```
-</details>
-
-<details>
-<summary>3. <code>POST /api/sessions</code> (Create session for User A)</summary>
-
-**Request:**
-```json
-{
-  "answers_a": {
-    "q1": "Tense and atmospheric"
-  }
-}
-```
-**Response:**
-```json
-{
-  "session_id": "bf5215c0-43ef-4b47-b847-1960251cf57b"
-}
-```
-</details>
-
-<details>
-<summary>4. <code>POST /api/sessions/:id/submit</code> (Submit User B and get merged results)</summary>
-
-**Request:**
-```json
-{
-  "answers_b": {
-    "q1": "Mindless action"
-  }
-}
-```
-**Response:**
-```json
-{
-  "recommendations": [...],
-  "mood_profile": { ... },
-  "merged_mood": "A fast-paced thriller that pairs tense action with atmospheric depth."
-}
-```
-</details>
-
----
-
 ## 📁 Project Structure
 
-```
+```text
 movieflix/
-├── docker-compose.yml        # PostgreSQL + pgvector config (Port 5433)
+├── docker-compose.yml        # PostgreSQL + pgvector config
 ├── dev.sh                    # Automated shell script to start db + backend + frontend
 ├── backend/                  # Go + Gin API
 │   ├── cmd/server/main.go    # Server entrypoint
@@ -221,4 +88,3 @@ movieflix/
     ├── components/           # UI elements (MovieCard, ExplainModal, etc.)
     └── lib/api.ts            # Typed REST API Client
 ```
-
