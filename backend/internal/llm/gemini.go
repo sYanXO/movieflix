@@ -8,16 +8,18 @@ import (
 
 	"google.golang.org/genai"
 	"moodflix/internal/models"
+	"moodflix/internal/db"
 )
 
 // Client wraps the Gemini generative AI client.
 type Client struct {
-	inner  *genai.Client
-	apiKey string
+	inner   *genai.Client
+	apiKey  string
+	prompts *db.PromptManager
 }
 
 // NewClient creates a new Gemini LLM client.
-func NewClient(apiKey string) (*Client, error) {
+func NewClient(apiKey string, prompts *db.PromptManager) (*Client, error) {
 	ctx := context.Background()
 	c, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey:  apiKey,
@@ -26,7 +28,7 @@ func NewClient(apiKey string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating gemini client: %w", err)
 	}
-	return &Client{inner: c, apiKey: apiKey}, nil
+	return &Client{inner: c, apiKey: apiKey, prompts: prompts}, nil
 }
 
 const flashModel = "gemini-3.1-flash-lite"
@@ -59,7 +61,7 @@ func stripJSON(s string) string {
 
 // GenerateAdaptiveQuiz generates a set of 3 highly customized movie-mood questions based on the user's initial answer.
 func (c *Client) GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error) {
-	prompt := fmt.Sprintf(`The user was asked: "How would you describe your week so far?"
+	fallback := `The user was asked: "How would you describe your week so far?"
 They answered: "%s"
 
 Generate exactly 3 highly creative, personalized, multi-choice questions to narrow down what movie they should watch. 
@@ -73,7 +75,15 @@ Respond ONLY with valid JSON (no markdown):
     "is_final": false
   },
   ...
-]`, starterAnswer)
+]`
+
+	template := fallback
+	if c.prompts != nil {
+		if t, err := c.prompts.GetActivePrompt(ctx, "GenerateAdaptiveQuiz", fallback); err == nil {
+			template = t
+		}
+	}
+	prompt := fmt.Sprintf(template, starterAnswer)
 
 	raw, err := c.generate(ctx, prompt)
 	if err != nil {
@@ -104,7 +114,7 @@ func (c *Client) ParseMoodProfile(ctx context.Context, answers map[string]string
 	}
 	answersText := strings.Join(parts, "\n")
 
-	prompt := fmt.Sprintf(`The user answered these questions about their movie mood:
+	fallback := `The user answered these questions about their movie mood:
 %s
 
 Respond ONLY with JSON (no markdown):
@@ -119,7 +129,15 @@ Respond ONLY with JSON (no markdown):
   "dealbreakers": ["gore", "romance"] or [],
   "keywords_to_boost": ["heist", "psychological"],
   "keywords_to_avoid": []
-}`, answersText)
+}`
+
+	template := fallback
+	if c.prompts != nil {
+		if t, err := c.prompts.GetActivePrompt(ctx, "ParseMoodProfile", fallback); err == nil {
+			template = t
+		}
+	}
+	prompt := fmt.Sprintf(template, answersText)
 
 	raw, err := c.generate(ctx, prompt)
 	if err != nil {

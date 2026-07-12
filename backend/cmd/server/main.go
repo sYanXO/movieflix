@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"time"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -50,8 +52,11 @@ func main() {
 	}
 	log.Println("✅ Database migrated successfully")
 
+	// Init Prompt Manager with 5 minute TTL
+	promptManager := db.NewPromptManager(pool, 5*time.Minute)
+
 	// Init Gemini LLM client
-	llmClient, err := llm.NewClient(geminiKey)
+	llmClient, err := llm.NewClient(geminiKey, promptManager)
 	if err != nil {
 		log.Fatalf("creating LLM client: %v", err)
 	}
@@ -77,7 +82,7 @@ func main() {
 			}
 			return false
 		},
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}))
@@ -91,8 +96,8 @@ func main() {
 	apiGroup := r.Group("/api")
 	{
 		apiGroup.POST("/generate-quiz", api.GenerateQuizHandler(llmClient))
-		apiGroup.POST("/recommend", api.RecommendHandler(recEngine))
-		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(recEngine))
+		apiGroup.POST("/recommend", api.RecommendHandler(recEngine, pool))
+		apiGroup.POST("/recommend-friends", api.FriendRecommendHandler(recEngine, pool))
 		apiGroup.POST("/explain", api.ExplainHandler(llmClient, pool))
 		apiGroup.POST("/mood-breakdown", api.MoodBreakdownHandler(llmClient))
 		apiGroup.GET("/proxy-image", api.ProxyImageHandler(pool))
@@ -101,6 +106,7 @@ func main() {
 		apiGroup.POST("/sessions", api.CreateSessionHandler(pool))
 		apiGroup.GET("/sessions/:id", api.GetSessionHandler(pool))
 		apiGroup.POST("/sessions/:id/submit", api.SubmitSessionBHandler(recEngine, pool))
+		apiGroup.PATCH("/sessions/:id/rating", api.RateSessionHandler(pool))
 	}
 
 	log.Printf("🚀 MoodFlix backend running on :%s\n", port)

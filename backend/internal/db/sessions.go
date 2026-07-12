@@ -83,3 +83,30 @@ func UpdateSessionB(ctx context.Context, pool *pgxpool.Pool, id string, answersB
 	}
 	return nil
 }
+
+// CreateRecommendationSession creates a new session in the database with answers, mood_profile, and recommendations and returns the generated session ID.
+func CreateRecommendationSession(ctx context.Context, pool *pgxpool.Pool, answers map[string]string, moodProfile *models.MoodProfile, recommendations []int) (string, error) {
+	var id string
+	err := pool.QueryRow(ctx, `
+		INSERT INTO sessions (answers, mood_profile, recommendations)
+		VALUES ($1, $2, $3)
+		RETURNING id::text
+	`, answers, moodProfile, recommendations).Scan(&id)
+	if err != nil {
+		return "", fmt.Errorf("create recommendation session: %w", err)
+	}
+	return id, nil
+}
+
+// UpdateSessionRating updates the session with a user rating and notes.
+func UpdateSessionRating(ctx context.Context, pool *pgxpool.Pool, id string, rating int, userNotes string) error {
+	_, err := pool.Exec(ctx, `
+		UPDATE sessions
+		SET rating = $1, user_notes = $2
+		WHERE id = $3
+	`, rating, userNotes, id)
+	if err != nil {
+		return fmt.Errorf("update session rating: %w", err)
+	}
+	return nil
+}

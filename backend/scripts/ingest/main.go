@@ -67,7 +67,7 @@ func main() {
 	ctx := context.Background()
 
 	// Init LLM client
-	llmClient, err := llm.NewClient(geminiKey)
+	llmClient, err := llm.NewClient(geminiKey, nil)
 	if err != nil {
 		log.Fatalf("LLM client: %v", err)
 	}

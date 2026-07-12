@@ -34,6 +34,7 @@ export interface MoodProfile {
 }
 
 export interface RecommendResponse {
+  session_id?: string;
   recommendations: Movie[];
   mood_profile: MoodProfile;
 }
@@ -49,6 +50,7 @@ export interface MoodBreakdownResponse {
 }
 
 export interface FriendRecommendResponse {
+  session_id?: string;
   recommendations: Movie[];
   mood_profile: MoodProfile;
   merged_mood: string;
@@ -67,6 +69,19 @@ export interface SessionResponse {
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? 'Request failed');
+  }
+  return res.json();
+}
+
+async function patch<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -128,5 +143,13 @@ export function submitSession(
   answersB: Record<string, string>
 ): Promise<FriendRecommendResponse> {
   return post(`/api/sessions/${sessionId}/submit`, { answers_b: answersB });
+}
+
+export function rateSession(
+  sessionId: string,
+  rating: number,
+  userNotes: string
+): Promise<{ status: string }> {
+  return patch(`/api/sessions/${sessionId}/rating`, { rating, user_notes: userNotes });
 }
 

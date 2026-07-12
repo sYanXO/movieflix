@@ -55,6 +55,7 @@ type ExplainRequest struct {
 
 // RecommendResponse is returned by POST /api/recommend.
 type RecommendResponse struct {
+	SessionID       string       `json:"session_id,omitempty"`
 	Recommendations []Movie      `json:"recommendations"`
 	MoodProfile     *MoodProfile `json:"mood_profile"`
 }
@@ -89,6 +90,7 @@ type FriendRecommendRequest struct {
 
 // FriendRecommendResponse is returned by POST /api/recommend-friends.
 type FriendRecommendResponse struct {
+	SessionID       string       `json:"session_id,omitempty"`
 	Recommendations []Movie      `json:"recommendations"`
 	MoodProfile     *MoodProfile `json:"mood_profile"`
 	MergedMood      string       `json:"merged_mood"`
@@ -102,6 +104,12 @@ type CreateSessionRequest struct {
 // SubmitSessionRequest is the request body for POST /api/sessions/:id/submit.
 type SubmitSessionRequest struct {
 	AnswersB map[string]string `json:"answers_b"`
+}
+
+// RateSessionRequest is the request body for PATCH /api/sessions/:id/rating.
+type RateSessionRequest struct {
+	Rating    int    `json:"rating"`
+	UserNotes string `json:"user_notes"`
 }
 
 // SessionResponse represents the remote sharing session status.

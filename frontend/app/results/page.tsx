@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MovieCard from '@/components/MovieCard';
 import ExplainModal from '@/components/ExplainModal';
 import MoodBreakdownModal from '@/components/MoodBreakdownModal';
+import FeedbackWidget from '@/components/FeedbackWidget';
 import { Movie, MoodProfile, RecommendResponse, FriendRecommendResponse, getExplanation } from '@/lib/api';
 
 // Build a readable sentence from the mood profile
@@ -25,6 +26,7 @@ export default function ResultsPage() {
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [isFriendMode, setIsFriendMode] = useState(false);
   const [mergedMood, setMergedMood] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
@@ -44,6 +46,8 @@ export default function ResultsPage() {
       const data: RecommendResponse | FriendRecommendResponse = JSON.parse(raw);
       setMovies(data.recommendations ?? []);
       setMoodProfile(data.mood_profile ?? null);
+      if (data.session_id) setSessionId(data.session_id);
+      
       const answers = sessionStorage.getItem('moodflix_answers');
       if (answers) setUserAnswers(JSON.parse(answers));
       // Friend mode
@@ -244,6 +248,13 @@ export default function ResultsPage() {
             Redo the Quiz
           </button>
         </motion.div>
+
+        {/* Feedback Widget */}
+        {sessionId && movies.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0 }} className="mt-16">
+            <FeedbackWidget sessionId={sessionId} />
+          </motion.div>
+        )}
       </div>
 
       <ExplainModal

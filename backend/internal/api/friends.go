@@ -4,12 +4,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"moodflix/internal/db"
 	"moodflix/internal/models"
 	"moodflix/internal/recommendation"
 )
 
 // FriendRecommendHandler handles POST /api/recommend-friends using the RecommendationEngine.
-func FriendRecommendHandler(engine recommendation.RecommendationEngine) gin.HandlerFunc {
+func FriendRecommendHandler(engine recommendation.RecommendationEngine, pool *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.FriendRecommendRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -26,6 +28,23 @@ func FriendRecommendHandler(engine recommendation.RecommendationEngine) gin.Hand
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
+		}
+
+		// Save session to database
+		sessionID, err := db.CreateSession(ctx, pool, req.AnswersA)
+		if err == nil {
+			recIDs := make([]int, len(resp.Recommendations))
+			for i, m := range resp.Recommendations {
+				recIDs[i] = m.ID
+			}
+			err = db.UpdateSessionB(ctx, pool, sessionID, req.AnswersB, resp.MergedMood, resp.MoodProfile, recIDs)
+			if err == nil {
+				resp.SessionID = sessionID
+			} else {
+				c.Error(err)
+			}
+		} else {
+			c.Error(err)
 		}
 
 		c.JSON(http.StatusOK, resp)
