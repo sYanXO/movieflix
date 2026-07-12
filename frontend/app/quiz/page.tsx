@@ -612,7 +612,7 @@ function QuizInner() {
                       onClick={() => isMulti ? toggleMulti(option) : handleAnswer(option)}
                       className={`w-full text-left px-6 py-5 rounded-2xl border transition-all duration-300 flex items-center gap-4 font-semibold text-lg ${
                         isSelected
-                           ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(225,29,72,0.3)]'
+                           ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(202,138,4,0.3)]'
                            : 'bg-surface border-border/50 text-foreground/80 hover:bg-surface-hover hover:border-border hover:text-foreground'
                       }`}
                     >

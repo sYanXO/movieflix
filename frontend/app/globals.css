@@ -4,16 +4,16 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-  --color-background: #050505;
-  --color-foreground: #fafafa;
-  --color-surface: #0f0f11;
-  --color-surface-hover: #18181c;
-  --color-border: #262626;
+  --color-background: #0F0F23;
+  --color-foreground: #F8FAFC;
+  --color-surface: #1B1B30;
+  --color-surface-hover: #27273B;
+  --color-border: #312E81;
   
-  /* Cinematic Crimson/Rose */
-  --color-primary: #e11d48;
-  --color-primary-hover: #f43f5e;
-  --color-primary-glow: rgba(225, 29, 72, 0.4);
+  /* Cinematic Spotlight Gold */
+  --color-primary: #CA8A04;
+  --color-primary-hover: #EAB308;
+  --color-primary-glow: rgba(202, 138, 4, 0.4);
 }
 
 @layer base {
@@ -72,14 +72,20 @@
   }
 
   /* Press active states */
-  button:active,
+  button:not(:disabled):active,
   a:active {
-    transform: scale(0.98);
-    transition: transform 0.1s ease;
+    transform: scale(0.97);
+  }
+  button,
+  a {
+    transition-property: transform;
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
   }
 
   .cinematic-btn {
-    @apply relative inline-flex items-center justify-center font-bold tracking-wide transition-all duration-300;
+    @apply relative inline-flex items-center justify-center font-bold tracking-wide;
+    transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 200ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
     font-family: var(--font-sans);
     background: var(--color-primary);
     color: #fff;
@@ -102,6 +108,6 @@
   
   .gradient-text-primary {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #f43f5e, #fda4af);
+    background-image: linear-gradient(135deg, var(--color-primary-hover), #FDE047);
   }
 }

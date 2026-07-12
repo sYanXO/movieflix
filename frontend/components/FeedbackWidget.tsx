@@ -29,8 +29,8 @@ export default function FeedbackWidget({ sessionId }: { sessionId: string }) {
   if (isSubmitted) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, transform: "scale(0.95)" }}
+        animate={{ opacity: 1, transform: "scale(1)" }}
         className="w-full max-w-lg mx-auto p-8 rounded-2xl bg-surface/50 border border-primary/20 flex flex-col items-center justify-center gap-4 text-center"
       >
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
@@ -61,11 +61,11 @@ export default function FeedbackWidget({ sessionId }: { sessionId: string }) {
             onHoverEnd={() => setHoveredStar(null)}
             onClick={() => setSelectedStar(star)}
             whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileTap={{ scale: 0.97 }}
             className="p-1 transition-colors"
           >
             <svg
-              className={`w-8 h-8 sm:w-10 sm:h-10 transition-colors duration-200 ${(hoveredStar !== null ? star <= hoveredStar : selectedStar !== null && star <= selectedStar) ? 'text-primary drop-shadow-[0_0_8px_rgba(225,29,72,0.4)]' : 'text-foreground/20'}`}
+              className={`w-8 h-8 sm:w-10 sm:h-10 transition-colors duration-200 ${(hoveredStar !== null ? star <= hoveredStar : selectedStar !== null && star <= selectedStar) ? 'text-primary drop-shadow-[0_0_8px_var(--color-primary-glow)]' : 'text-foreground/20'}`}
               fill="currentColor"
               viewBox="0 0 24 24"
             >
@@ -95,7 +95,7 @@ export default function FeedbackWidget({ sessionId }: { sessionId: string }) {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wide transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
             </button>

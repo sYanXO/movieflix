@@ -39,11 +39,11 @@ export default function MovieCard({ movie, index, onWhyThis }: MovieCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, transform: "translateY(20px)" }}
+      animate={{ opacity: 1, transform: "translateY(0px)" }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4) }}
       whileHover={{ y: -6 }}
-      className="group relative rounded-2xl overflow-hidden bg-surface border border-border/50 shadow-xl flex flex-col cursor-pointer transition-all duration-300 hover:shadow-primary/10 hover:shadow-2xl hover:border-primary/30"
+      className="group relative rounded-2xl overflow-hidden bg-surface border border-border/50 shadow-xl flex flex-col cursor-pointer transition-colors duration-200 hover:shadow-primary/10 hover:shadow-2xl hover:border-primary/30"
     >
       {/* Poster area */}
       <div className="relative w-full aspect-[2/3] overflow-hidden flex-shrink-0 bg-background/50">
@@ -112,9 +112,9 @@ export default function MovieCard({ movie, index, onWhyThis }: MovieCardProps) {
         {/* Why this button */}
         <motion.button
           whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileTap={{ scale: 0.97 }}
           onClick={(e) => { e.stopPropagation(); onWhyThis(movie); }}
-          className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-primary border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white transition-all duration-300"
+          className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-primary border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white transition-colors duration-200"
         >
           Why this?
         </motion.button>

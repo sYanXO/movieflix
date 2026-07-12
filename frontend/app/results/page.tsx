@@ -109,7 +109,7 @@ export default function ResultsPage() {
     <main className="min-h-screen bg-background relative overflow-hidden">
       {/* Ambient top glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[300px] pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(225,29,72,0.1) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(ellipse, rgba(202,138,4,0.1) 0%, transparent 70%)' }} />
       <div className="absolute inset-0 opacity-[0.015] pointer-events-none mix-blend-overlay"
         style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
 

@@ -67,9 +67,9 @@ export default function MoodBreakdownModal({ isOpen, moodProfile, onClose }: Moo
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
+            initial={{ opacity: 0, transform: "translateY(40px) scale(0.95)" }}
+            animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+            exit={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none"
           >
@@ -89,8 +89,8 @@ export default function MoodBreakdownModal({ isOpen, moodProfile, onClose }: Moo
                   </p>
                   {breakdown?.persona ? (
                     <motion.h3
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0, transform: "translateY(6px)" }}
+                      animate={{ opacity: 1, transform: "translateY(0px)" }}
                       className="text-foreground text-2xl font-display font-black leading-tight tracking-tight"
                     >
                       {breakdown.persona}
@@ -150,8 +150,8 @@ export default function MoodBreakdownModal({ isOpen, moodProfile, onClose }: Moo
                           <motion.div
                             className="h-full rounded-full"
                             style={{
-                              background: `linear-gradient(90deg, #e11d48, #f43f5e)`,
-                              boxShadow: attr.score > 70 ? '0 0 8px rgba(225,29,72,0.5)' : 'none',
+                              background: `linear-gradient(90deg, var(--color-primary), var(--color-primary-hover))`,
+                              boxShadow: attr.score > 70 ? '0 0 8px var(--color-primary-glow)' : 'none',
                             }}
                             initial={{ width: 0 }}
                             animate={{ width: `${attr.score}%` }}

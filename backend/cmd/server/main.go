@@ -15,6 +15,7 @@ import (
 	"moodflix/internal/db"
 	"moodflix/internal/llm"
 	"moodflix/internal/recommendation"
+	"moodflix/internal/session"
 )
 
 
@@ -62,11 +63,15 @@ func main() {
 	}
 	log.Println("✅ Gemini adapter ready")
 
-	prompter := recommendation.NewLLMPrompter(llmAdapter, promptManager)
+	basePrompter := recommendation.NewLLMPrompter(llmAdapter, promptManager)
+	prompter := recommendation.NewResilientPrompter(basePrompter)
 
 	// Init Recommendation Engine (with cache)
 	baseEngine := recommendation.NewEngine(llmAdapter, prompter, pool)
 	recEngine := recommendation.NewCachedEngine(baseEngine)
+
+	// Init Session Manager
+	sessionManager := session.NewManager(recEngine, pool)
 
 	// Setup Gin router
 	r := gin.Default()
@@ -106,10 +111,10 @@ func main() {
 		apiGroup.GET("/proxy-image", api.ProxyImageHandler(pool))
 
 		// Shared remote session routes
-		apiGroup.POST("/sessions", api.CreateSessionHandler(pool))
-		apiGroup.GET("/sessions/:id", api.GetSessionHandler(pool))
-		apiGroup.POST("/sessions/:id/submit", api.SubmitSessionBHandler(recEngine, pool))
-		apiGroup.PATCH("/sessions/:id/rating", api.RateSessionHandler(pool))
+		apiGroup.POST("/sessions", api.CreateSessionHandler(sessionManager))
+		apiGroup.GET("/sessions/:id", api.GetSessionHandler(sessionManager))
+		apiGroup.POST("/sessions/:id/submit", api.SubmitSessionBHandler(sessionManager))
+		apiGroup.PATCH("/sessions/:id/rating", api.RateSessionHandler(sessionManager))
 	}
 
 	log.Printf("🚀 MoodFlix backend running on :%s\n", port)

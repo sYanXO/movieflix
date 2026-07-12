@@ -73,7 +73,7 @@ const FEATURES = [
     ),
     title: 'Mood-first, not genre-first',
     desc: 'Stop hunting through genre tabs. Describe how you feel and we handle the rest — because "action" means nothing when you\'re emotionally exhausted.',
-    accent: '#e11d48',
+    accent: '#CA8A04',
   },
   {
     icon: (
@@ -83,7 +83,7 @@ const FEATURES = [
     ),
     title: 'Adaptive questions',
     desc: 'No rigid 20-question forms. The system adapts in real-time, stopping as soon as it\'s confident — usually in 2–3 questions.',
-    accent: '#f43f5e',
+    accent: '#EAB308',
   },
   {
     icon: (
@@ -93,7 +93,7 @@ const FEATURES = [
     ),
     title: 'Beyond the algorithm bubble',
     desc: 'Vector similarity search across thousands of films surfaces hidden gems you\'d never find on Netflix or Prime. Obscure classics welcome.',
-    accent: '#fb7185',
+    accent: '#FDE047',
   },
   {
     icon: (
@@ -103,7 +103,7 @@ const FEATURES = [
     ),
     title: 'Transparent reasoning',
     desc: 'Every recommendation comes with a "Why this?" button. You\'ll see exactly why that film was picked for your specific mood — no black boxes.',
-    accent: '#e11d48',
+    accent: '#CA8A04',
   },
   {
     icon: (
@@ -113,7 +113,7 @@ const FEATURES = [
     ),
     title: 'Zero friction, zero account',
     desc: 'No sign-up, no subscription, no ads. Open the page, answer questions, get your movie. That\'s it.',
-    accent: '#f43f5e',
+    accent: '#EAB308',
   },
   {
     icon: (
@@ -123,7 +123,7 @@ const FEATURES = [
     ),
     title: 'Built for real movie nights',
     desc: 'Designed around how humans actually decide — feeling, energy level, how much attention you have — not abstract genre taxonomies.',
-    accent: '#fb7185',
+    accent: '#FDE047',
   },
 ];
 
@@ -133,8 +133,8 @@ function SectionWrapper({ children, className = '' }: { children: React.ReactNod
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      initial={{ opacity: 0, transform: "translateY(40px)" }}
+      animate={isInView ? { opacity: 1, transform: "translateY(0px)" } : { opacity: 0, transform: "translateY(40px)" }}
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
@@ -149,10 +149,10 @@ function FeatureCard({ feature, index }: { feature: typeof FEATURES[0]; index: n
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+      initial={{ opacity: 0, transform: "translateY(30px)" }}
+      animate={isInView ? { opacity: 1, transform: "translateY(0px)" } : { opacity: 0, transform: "translateY(30px)" }}
       transition={{ duration: 0.6, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300"
+      className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10 transition-colors duration-200"
       style={{ '--card-accent': feature.accent } as React.CSSProperties}
     >
       <div
@@ -196,11 +196,11 @@ export default function LandingPage() {
         {/* Vibrant glow — more saturated */}
         <div
           className="absolute top-[-15%] left-1/2 w-[90%] max-w-5xl h-[60%] -translate-x-1/2 pointer-events-none rounded-full blur-[140px] opacity-30"
-          style={{ background: 'radial-gradient(ellipse, #e11d48 0%, #9f1239 60%, transparent 100%)' }}
+          style={{ background: 'radial-gradient(ellipse, #CA8A04 0%, #A16207 60%, transparent 100%)' }}
         />
         <div
           className="absolute bottom-0 right-[-10%] w-[50%] h-[40%] pointer-events-none rounded-full blur-[100px] opacity-10"
-          style={{ background: '#f43f5e' }}
+          style={{ background: '#EAB308' }}
         />
 
         {/* Noise overlay */}
@@ -210,8 +210,8 @@ export default function LandingPage() {
         {/* Navbar */}
         <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto w-full">
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, transform: "translateY(-10px)" }}
+            animate={{ opacity: 1, transform: "translateY(0px)" }}
             transition={{ duration: 0.5 }}
             className="flex items-center gap-2"
           >
@@ -220,22 +220,36 @@ export default function LandingPage() {
             </span>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
+          <motion.a
+            href="https://github.com/sYanXO/movieflix"
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ opacity: 0, transform: "translateY(-10px)" }}
+            animate={{ opacity: 1, transform: "translateY(0px)" }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-border/50 bg-surface/50 backdrop-blur-sm"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="group hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-border/50 bg-surface/50 backdrop-blur-sm hover:border-primary/50 transition-colors duration-200 relative cursor-pointer"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-medium text-foreground/70 uppercase tracking-widest">Smart Matching</span>
-          </motion.div>
+            <svg className="w-4 h-4 text-foreground/70 group-hover:text-primary transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+            </svg>
+            <span className="text-xs font-medium text-foreground/70 uppercase tracking-widest group-hover:text-primary transition-colors duration-200">GitHub</span>
+            
+            {/* Floating Message Tooltip */}
+            <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap bg-surface border border-primary/30 px-3 py-1.5 rounded-lg shadow-xl shadow-primary/10">
+              <span className="text-[10px] font-bold text-primary tracking-widest uppercase">Star the repo if you enjoyed it! ⭐</span>
+              {/* Tooltip Arrow */}
+              <div className="absolute -top-[5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-surface border-t border-l border-primary/30 rotate-45" />
+            </div>
+          </motion.a>
         </nav>
 
         {/* Hero Content */}
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto w-full mt-[-6vh]">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, transform: "scale(0.95)" }}
+            animate={{ opacity: 1, transform: "scale(1)" }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="w-full"
           >
@@ -245,8 +259,8 @@ export default function LandingPage() {
                 {MOOD_WORDS.map((word, i) => (
                   <motion.span
                     key={word}
-                    initial={{ opacity: i === 0 ? 1 : 0, y: i === 0 ? 0 : 15 }}
-                    animate={{ opacity: i === currentWordIndex ? 1 : 0, y: i === currentWordIndex ? 0 : (i < currentWordIndex ? -15 : 15) }}
+                    initial={{ opacity: i === 0 ? 1 : 0, transform: `translateY(${i === 0 ? 0 : 15}px)` }}
+                    animate={{ opacity: i === currentWordIndex ? 1 : 0, transform: `translateY(${i === currentWordIndex ? 0 : (i < currentWordIndex ? -15 : 15)}px)` }}
                     transition={{ duration: 0.4 }}
                     className="col-start-1 row-start-1"
                     aria-hidden={i !== currentWordIndex}
@@ -261,8 +275,8 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, transform: "translateY(10px)" }}
+            animate={{ opacity: 1, transform: "translateY(0px)" }}
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-foreground/60 text-lg sm:text-xl max-w-xl leading-relaxed mb-10"
           >
@@ -271,11 +285,11 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: "translateY(10px)" }}
+              animate={{ opacity: 1, transform: "translateY(0px)" }}
               transition={{ duration: 0.5, delay: 0.3 }}
               whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => router.push('/quiz')}
               className="cinematic-btn px-10 py-4 rounded-xl text-lg group w-full sm:w-auto"
             >
@@ -288,13 +302,13 @@ export default function LandingPage() {
             </motion.button>
 
             <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: "translateY(10px)" }}
+              animate={{ opacity: 1, transform: "translateY(0px)" }}
               transition={{ duration: 0.5, delay: 0.4 }}
               whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => router.push('/quiz?mode=friend')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold border border-white/10 bg-white/[0.04] text-white/70 hover:text-white hover:border-white/20 hover:bg-white/[0.08] transition-all duration-300"
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold border border-white/10 bg-white/[0.04] text-white/70 hover:text-white hover:border-white/20 hover:bg-white/[0.08] transition-colors duration-200"
             >
               <svg className="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -314,7 +328,7 @@ export default function LandingPage() {
           >
             <span className="text-xs font-medium uppercase tracking-widest">Scroll to learn more</span>
             <motion.div
-              animate={{ y: [0, 6, 0] }}
+              animate={{ transform: ["translateY(0px)", "translateY(6px)", "translateY(0px)"] }}
               transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -331,12 +345,12 @@ export default function LandingPage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(225,29,72,0.07) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(202,138,4,0.07) 0%, transparent 70%)',
           }}
         />
         <div
           className="absolute top-0 left-0 right-0 h-px pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(225,29,72,0.3), transparent)' }}
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(202,138,4,0.3), transparent)' }}
         />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6">
@@ -385,8 +399,8 @@ export default function LandingPage() {
               {HOW_IT_WORKS_STEPS.map((step, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: 30 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, transform: "translateX(30px)" }}
+                  whileInView={{ opacity: 1, transform: "translateX(0px)" }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   className="flex-shrink-0 snap-center w-[300px] sm:w-[320px] p-7 rounded-2xl border border-white/5 bg-white/[0.03] relative group hover:border-primary/20 hover:bg-white/[0.05] transition-all duration-300"
@@ -398,7 +412,7 @@ export default function LandingPage() {
 
                   {/* Hover glow */}
                   <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                    style={{ background: 'radial-gradient(ellipse at top left, rgba(225,29,72,0.1) 0%, transparent 60%)' }} />
+                    style={{ background: 'radial-gradient(ellipse at top left, rgba(202,138,4,0.1) 0%, transparent 60%)' }} />
 
                   <div className="inline-flex p-3 rounded-xl mb-5 text-primary bg-primary/10 group-hover:bg-primary/15 transition-colors">
                     {step.icon}
@@ -407,7 +421,7 @@ export default function LandingPage() {
                   {/* Connector line (except last) */}
                   {i < HOW_IT_WORKS_STEPS.length - 1 && (
                     <div className="absolute top-[60px] right-[-20px] w-5 h-px z-10 hidden xl:block"
-                      style={{ background: 'linear-gradient(90deg, rgba(225,29,72,0.4), transparent)' }} />
+                      style={{ background: 'linear-gradient(90deg, rgba(202,138,4,0.4), transparent)' }} />
                   )}
 
                   <div className="text-xs font-bold text-primary/60 uppercase tracking-widest mb-2">Step {step.number}</div>
@@ -463,12 +477,12 @@ export default function LandingPage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 70% 80% at 80% 50%, rgba(244,63,94,0.06) 0%, transparent 70%), radial-gradient(ellipse 60% 60% at 20% 80%, rgba(225,29,72,0.05) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse 70% 80% at 80% 50%, rgba(234,179,8,0.06) 0%, transparent 70%), radial-gradient(ellipse 60% 60% at 20% 80%, rgba(202,138,4,0.05) 0%, transparent 70%)',
           }}
         />
         <div
           className="absolute top-0 left-0 right-0 h-px pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(244,63,94,0.25), transparent)' }}
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(234,179,8,0.25), transparent)' }}
         />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6">
@@ -501,23 +515,23 @@ export default function LandingPage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 100% 120% at 50% 50%, rgba(225,29,72,0.15) 0%, rgba(159,18,57,0.08) 40%, transparent 75%)',
+            background: 'radial-gradient(ellipse 100% 120% at 50% 50%, rgba(202,138,4,0.15) 0%, rgba(161,98,7,0.08) 40%, transparent 75%)',
           }}
         />
         <div
           className="absolute top-0 left-0 right-0 h-px pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(225,29,72,0.4), transparent)' }}
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(202,138,4,0.4), transparent)' }}
         />
         <div
           className="absolute bottom-0 left-0 right-0 h-px pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(225,29,72,0.15), transparent)' }}
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(202,138,4,0.15), transparent)' }}
         />
 
         {/* Decorative orbs */}
         <div className="absolute top-1/4 left-[10%] w-64 h-64 rounded-full blur-[80px] pointer-events-none opacity-20"
-          style={{ background: '#e11d48' }} />
+          style={{ background: '#CA8A04' }} />
         <div className="absolute bottom-1/4 right-[10%] w-48 h-48 rounded-full blur-[60px] pointer-events-none opacity-15"
-          style={{ background: '#f43f5e' }} />
+          style={{ background: '#EAB308' }} />
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
           <SectionWrapper>
@@ -539,7 +553,7 @@ export default function LandingPage() {
               whileTap={{ scale: 0.97 }}
               onClick={() => router.push('/quiz')}
               className="cinematic-btn px-14 py-5 rounded-2xl text-xl font-bold group shadow-2xl"
-              style={{ boxShadow: '0 0 60px rgba(225,29,72,0.35)' }}
+              style={{ boxShadow: '0 0 60px rgba(202,138,4,0.35)' }}
             >
               <span className="flex items-center gap-3">
                 Find My Movie

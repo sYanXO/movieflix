@@ -46,9 +46,9 @@ export default function ExplainModal({
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.98 }}
+            initial={{ opacity: 0, transform: "translateY(40px) scale(0.95)" }}
+            animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+            exit={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none"
           >
@@ -93,8 +93,8 @@ export default function ExplainModal({
                   </div>
                 ) : explanation ? (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, transform: "translateY(10px)" }}
+                    animate={{ opacity: 1, transform: "translateY(0px)" }}
                     className="prose prose-invert prose-p:text-foreground/80 prose-p:leading-relaxed prose-p:text-[15px]"
                   >
                     <p>{explanation}</p>
