@@ -212,7 +212,7 @@ function QuizInner() {
   const isAnswerLocked = useRef(false);
   useEffect(() => {
     isAnswerLocked.current = false;
-  }, [questionNum]);
+  }, [questionNum, friendPerson, status]);
 
   useEffect(() => {
     const loadQuiz = async () => {
