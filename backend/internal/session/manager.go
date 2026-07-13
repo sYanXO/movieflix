@@ -42,6 +42,15 @@ func (m *manager) CompleteSession(ctx context.Context, id string, answersB map[s
 		return nil, fmt.Errorf("session is invalid: answers_a is missing")
 	}
 
+	if sess.IsComplete {
+		return &models.FriendRecommendResponse{
+			SessionID:       sess.ID,
+			Recommendations: sess.Recommendations,
+			MoodProfile:     sess.MoodProfile,
+			MergedMood:      sess.MergedMood,
+		}, nil
+	}
+
 	resp, err := m.engine.GetFriendRecommendations(ctx, sess.AnswersA, answersB)
 	if err != nil {
 		return nil, err
