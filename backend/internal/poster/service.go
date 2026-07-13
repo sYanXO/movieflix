@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -29,9 +30,36 @@ type service struct {
 }
 
 func NewService(pool *pgxpool.Pool) Service {
+	dialer := &net.Dialer{
+		Timeout:   3 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, _, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			ips, err := net.LookupIP(host)
+			if err != nil {
+				return nil, err
+			}
+			for _, ip := range ips {
+				if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsUnspecified() {
+					return nil, fmt.Errorf("SSRF blocked: illegal IP %s", ip.String())
+				}
+			}
+			return dialer.DialContext(ctx, network, addr)
+		},
+	}
+
 	return &service{
 		pool: pool,
-		client: &http.Client{Timeout: 8 * time.Second},
+		client: &http.Client{
+			Timeout:   8 * time.Second,
+			Transport: transport,
+		},
 	}
 }
 
@@ -123,6 +151,14 @@ func (s *service) searchDDGPosters(ctx context.Context, title string, year int) 
 }
 
 func (s *service) streamImage(ctx context.Context, targetURL string) (*Result, error) {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL: %w", err)
+	}
+	if u.Scheme != "https" {
+		return nil, fmt.Errorf("invalid scheme: only https is allowed")
+	}
+
 	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
 		return nil, err
