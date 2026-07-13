@@ -100,13 +100,16 @@ func CreateRecommendationSession(ctx context.Context, pool *pgxpool.Pool, answer
 
 // UpdateSessionRating updates the session with a user rating and notes.
 func UpdateSessionRating(ctx context.Context, pool *pgxpool.Pool, id string, rating int, userNotes string) error {
-	_, err := pool.Exec(ctx, `
+	tag, err := pool.Exec(ctx, `
 		UPDATE sessions
 		SET rating = $1, user_notes = $2
 		WHERE id = $3
 	`, rating, userNotes, id)
 	if err != nil {
 		return fmt.Errorf("update session rating: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("session not found")
 	}
 	return nil
 }
