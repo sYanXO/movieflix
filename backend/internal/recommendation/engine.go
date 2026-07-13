@@ -264,7 +264,10 @@ func (c *CachedRecommendationEngine) GetRecommendations(ctx context.Context, ans
 
 	if hit {
 		log.Println("⚡ Recommendation cache hit! Returning cached recommendations.")
-		return cached, nil
+		return &models.RecommendResponse{
+			Recommendations: cached.Recommendations,
+			MoodProfile:     cached.MoodProfile,
+		}, nil
 	}
 
 	log.Println("🐢 Recommendation cache miss. Fetching fresh recommendations...")
@@ -274,7 +277,10 @@ func (c *CachedRecommendationEngine) GetRecommendations(ctx context.Context, ans
 	}
 
 	c.mu.Lock()
-	c.cache[key] = response
+	c.cache[key] = &models.RecommendResponse{
+		Recommendations: response.Recommendations,
+		MoodProfile:     response.MoodProfile,
+	}
 	c.mu.Unlock()
 
 	return response, nil
