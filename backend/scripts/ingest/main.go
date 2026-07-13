@@ -92,6 +92,29 @@ func main() {
 
 	// Load progress
 	progress := loadProgress()
+	
+	// Augment progress with what's already in DB
+	rows, err := pool.Query(ctx, "SELECT tmdb_id FROM movies")
+	if err == nil {
+		dbCount := 0
+		for rows.Next() {
+			var id int
+			if err := rows.Scan(&id); err == nil {
+				idStr := strconv.Itoa(id)
+				if !progress.ProcessedIDs[idStr] {
+					progress.ProcessedIDs[idStr] = true
+					dbCount++
+				}
+			}
+		}
+		rows.Close()
+		if dbCount > 0 {
+			log.Printf("📥 Added %d existing movies from DB to processed list", dbCount)
+		}
+	} else {
+		log.Printf("⚠️ Could not fetch existing movies from DB: %v", err)
+	}
+	
 	log.Printf("📁 Resuming from %d already-processed movies", len(progress.ProcessedIDs))
 
 	// Open CSV
