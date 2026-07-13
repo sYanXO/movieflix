@@ -61,7 +61,7 @@ func (e *DefaultRecommendationEngine) GetRecommendations(ctx context.Context, an
 	// Handle Embed Text rate limits/errors
 	if embedErr != nil {
 		embedErrStr := strings.ToLower(embedErr.Error())
-		if strings.Contains(embedErrStr, "429") || strings.Contains(embedErrStr, "quota") || strings.Contains(embedErrStr, "limit") {
+		if strings.Contains(embedErrStr, "429") || strings.Contains(embedErrStr, "quota") || strings.Contains(embedErrStr, "rate limit") || strings.Contains(embedErrStr, "exhausted") {
 			log.Println("⚠️ Gemini EmbedText rate-limited (429). Falling back to database SQL search...")
 			candidates, err = db.GenreAndRatingSearch(ctx, e.dbPool, profile.Genres, 50)
 			if err != nil {
@@ -157,7 +157,7 @@ func (e *DefaultRecommendationEngine) GetFriendRecommendations(ctx context.Conte
 	embedding, embedErr = e.adapter.EmbedText(ctx, profileText)
 	if embedErr != nil {
 		errStr := strings.ToLower(embedErr.Error())
-		if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") {
+		if strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "rate limit") || strings.Contains(errStr, "exhausted") {
 			log.Println("⚠️ Rate-limited on embed (friend mode), using genre fallback")
 			candidates, err = db.GenreAndRatingSearch(ctx, e.dbPool, mergedProfile.Genres, 50)
 			if err != nil {
