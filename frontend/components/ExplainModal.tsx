@@ -45,15 +45,19 @@ export default function ExplainModal({
           />
 
           {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, transform: "translateY(40px) scale(0.95)" }}
-            animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
-            exit={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none"
-          >
-            <div
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+            <motion.div
               id="explain-modal"
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={0.8}
+              onDragEnd={(e, info) => {
+                if (info.velocity.y > 500 || info.offset.y > 100) onClose();
+              }}
               className="pointer-events-auto w-full max-w-lg rounded-2xl bg-surface border border-border/60 shadow-2xl overflow-hidden relative"
               style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
             >
@@ -115,8 +119,8 @@ export default function ExplainModal({
                   </div>
                 )}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

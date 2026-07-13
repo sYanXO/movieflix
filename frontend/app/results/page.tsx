@@ -172,7 +172,7 @@ export default function ResultsPage() {
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-6 py-12">
         {/* Header section */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', bounce: 0, duration: 0.5 }} className="mb-10">
           <div className="flex items-center gap-3 mb-3">
             <p className="text-primary text-xs font-bold uppercase tracking-widest">
               {isFriendMode ? '🎬 Picked for both of you' : 'Curated for you'}
@@ -207,7 +207,7 @@ export default function ResultsPage() {
 
           {/* Vibe sentence */}
           {vibeSentence && (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', bounce: 0, duration: 0.5, delay: 0.15 }} className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <span className="text-foreground/35 text-sm font-medium uppercase tracking-widest">Your vibe</span>
               <span className="text-foreground/70 text-sm font-semibold">{vibeSentence}</span>
               {dealbreakers.length > 0 && (
@@ -251,7 +251,7 @@ export default function ResultsPage() {
 
         {/* Feedback Widget */}
         {sessionId && movies.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0 }} className="mt-16">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', bounce: 0, duration: 0.5, delay: 1.0 }} className="mt-16">
             <FeedbackWidget sessionId={sessionId} />
           </motion.div>
         )}

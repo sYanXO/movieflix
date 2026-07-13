@@ -39,9 +39,9 @@ export default function MovieCard({ movie, index, onWhyThis }: MovieCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, transform: "translateY(20px)" }}
-      animate={{ opacity: 1, transform: "translateY(0px)" }}
-      transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4) }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', bounce: 0, duration: 0.4, delay: Math.min(index * 0.05, 0.4) }}
       whileHover={{ y: -6 }}
       className="group relative rounded-2xl overflow-hidden bg-surface border border-border/50 shadow-xl flex flex-col cursor-pointer transition-colors duration-200 hover:shadow-primary/10 hover:shadow-2xl hover:border-primary/30"
     >

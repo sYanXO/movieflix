@@ -133,9 +133,9 @@ function SectionWrapper({ children, className = '' }: { children: React.ReactNod
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, transform: "translateY(40px)" }}
-      animate={isInView ? { opacity: 1, transform: "translateY(0px)" } : { opacity: 0, transform: "translateY(40px)" }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      transition={{ type: 'spring', bounce: 0, duration: 0.7 }}
       className={className}
     >
       {children}
@@ -149,9 +149,9 @@ function FeatureCard({ feature, index }: { feature: typeof FEATURES[0]; index: n
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, transform: "translateY(30px)" }}
-      animate={isInView ? { opacity: 1, transform: "translateY(0px)" } : { opacity: 0, transform: "translateY(30px)" }}
-      transition={{ duration: 0.6, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 30 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+      transition={{ type: 'spring', bounce: 0, duration: 0.6, delay: index * 0.08 }}
       className="group relative p-6 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10 transition-colors duration-200"
       style={{ '--card-accent': feature.accent } as React.CSSProperties}
     >
@@ -210,9 +210,9 @@ export default function LandingPage() {
         {/* Navbar */}
         <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto w-full">
           <motion.div
-            initial={{ opacity: 0, transform: "translateY(-10px)" }}
-            animate={{ opacity: 1, transform: "translateY(0px)" }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
             className="flex items-center gap-2"
           >
             <span className="font-display font-black text-2xl tracking-tighter text-foreground">
@@ -224,9 +224,9 @@ export default function LandingPage() {
             href="https://github.com/sYanXO/movieflix"
             target="_blank"
             rel="noopener noreferrer"
-            initial={{ opacity: 0, transform: "translateY(-10px)" }}
-            animate={{ opacity: 1, transform: "translateY(0px)" }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.5, delay: 0.1 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="group hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-border/50 bg-surface/50 backdrop-blur-sm hover:border-primary/50 transition-colors duration-200 relative cursor-pointer"
@@ -248,9 +248,9 @@ export default function LandingPage() {
         {/* Hero Content */}
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto w-full mt-[-6vh]">
           <motion.div
-            initial={{ opacity: 0, transform: "scale(0.95)" }}
-            animate={{ opacity: 1, transform: "scale(1)" }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.7 }}
             className="w-full"
           >
             <h1 className="font-display text-5xl sm:text-7xl md:text-[5.5rem] font-black tracking-tight leading-[1.05] text-balance text-foreground mb-6">
@@ -259,9 +259,9 @@ export default function LandingPage() {
                 {MOOD_WORDS.map((word, i) => (
                   <motion.span
                     key={word}
-                    initial={{ opacity: i === 0 ? 1 : 0, transform: `translateY(${i === 0 ? 0 : 15}px)` }}
-                    animate={{ opacity: i === currentWordIndex ? 1 : 0, transform: `translateY(${i === currentWordIndex ? 0 : (i < currentWordIndex ? -15 : 15)}px)` }}
-                    transition={{ duration: 0.4 }}
+                    initial={{ opacity: i === 0 ? 1 : 0, y: i === 0 ? 0 : 15 }}
+                    animate={{ opacity: i === currentWordIndex ? 1 : 0, y: i === currentWordIndex ? 0 : (i < currentWordIndex ? -15 : 15) }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
                     className="col-start-1 row-start-1"
                     aria-hidden={i !== currentWordIndex}
                     style={{ pointerEvents: i === currentWordIndex ? 'auto' : 'none' }}
@@ -275,9 +275,9 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.p
-            initial={{ opacity: 0, transform: "translateY(10px)" }}
-            animate={{ opacity: 1, transform: "translateY(0px)" }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.5, delay: 0.2 }}
             className="text-foreground/60 text-lg sm:text-xl max-w-xl leading-relaxed mb-10"
           >
             Skip the endless scrolling. Answer 5 quick questions and get the perfect cinematic experience curated for your exact mood.
@@ -285,9 +285,9 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <motion.button
-              initial={{ opacity: 0, transform: "translateY(10px)" }}
-              animate={{ opacity: 1, transform: "translateY(0px)" }}
-              transition={{ duration: 0.5, delay: 0.3 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.5, delay: 0.3 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => router.push('/quiz')}
@@ -302,9 +302,9 @@ export default function LandingPage() {
             </motion.button>
 
             <motion.button
-              initial={{ opacity: 0, transform: "translateY(10px)" }}
-              animate={{ opacity: 1, transform: "translateY(0px)" }}
-              transition={{ duration: 0.5, delay: 0.4 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.5, delay: 0.4 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => router.push('/quiz?mode=friend')}
@@ -399,10 +399,10 @@ export default function LandingPage() {
               {HOW_IT_WORKS_STEPS.map((step, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, transform: "translateX(30px)" }}
-                  whileInView={{ opacity: 1, transform: "translateX(0px)" }}
+                  initial={{ opacity: 0, x: 30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.5, delay: i * 0.1 }}
                   className="flex-shrink-0 snap-center w-[300px] sm:w-[320px] p-7 rounded-2xl border border-white/5 bg-white/[0.03] relative group hover:border-primary/20 hover:bg-white/[0.05] transition-all duration-300"
                 >
                   {/* Step number watermark */}

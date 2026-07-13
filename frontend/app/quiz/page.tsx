@@ -437,7 +437,7 @@ function QuizInner() {
                 className="h-full bg-primary"
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
               />
             </div>
           )}
@@ -502,7 +502,7 @@ function QuizInner() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
               className="flex flex-col gap-8"
             >
               <div className="flex flex-col gap-3">
@@ -527,7 +527,7 @@ function QuizInner() {
                       id={`option-${i}`}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05, duration: 0.3 }}
+                      transition={{ type: 'spring', bounce: 0, duration: 0.4, delay: i * 0.05 }}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => isMulti ? toggleMulti(option) : handleAnswer(option)}
@@ -561,7 +561,7 @@ function QuizInner() {
                 <motion.button
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.4, delay: 0.3 }}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={submitMultiSelect}
