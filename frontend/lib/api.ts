@@ -207,10 +207,21 @@ class StorageCache {
   }
 
   clear(): void {
-    this.cache = {};
+    for (const key in this.cache) {
+      if (key.startsWith('moodflix_')) {
+        delete this.cache[key];
+      }
+    }
     try {
       if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.clear();
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && key.startsWith('moodflix_')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(k => sessionStorage.removeItem(k));
       }
     } catch (e) {
       // Ignore
