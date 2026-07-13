@@ -207,7 +207,7 @@ function QuizInner() {
   const showHandoffChoice = status === 'HANDOFF_CHOICE';
   const isFriendWaiting = status === 'WAITING_FOR_FRIEND';
   const isLoading = status === 'INITIALIZING' || status === 'LOADING_NEXT_QUESTION';
-  const isSubmitting = status === 'SUBMITTING';
+  const isSubmitting = status === 'SUBMITTING_FINAL' || status === 'CREATING_SESSION';
 
   const isAnswerLocked = useRef(false);
   useEffect(() => {
@@ -485,6 +485,10 @@ function QuizInner() {
                 dispatch({ type: 'CLEAR_ERROR' }); 
                 if (status === 'INITIALIZING') {
                   window.location.reload();
+                } else if (status === 'SUBMITTING_FINAL') {
+                  handleFinal(answers);
+                } else if (status === 'CREATING_SESSION') {
+                  handleSelectRemote();
                 } else {
                   fetchNextQuestion(answers); 
                 }

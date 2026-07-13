@@ -8,7 +8,8 @@ export type QuizStatus =
   | 'HANDOFF_CHOICE'
   | 'HANDOFF_LOCAL'
   | 'WAITING_FOR_FRIEND'
-  | 'SUBMITTING';
+  | 'SUBMITTING_FINAL'
+  | 'CREATING_SESSION';
 
 export interface HistoryEntry {
   question: QuestionResponse;
@@ -179,7 +180,7 @@ export function quizReducer(state: QuizState, action: QuizAction): QuizState {
     case 'HANDOFF_REMOTE_START':
       return {
         ...state,
-        status: 'SUBMITTING',
+        status: 'CREATING_SESSION',
         error: null,
       };
     case 'HANDOFF_REMOTE_SUCCESS':
@@ -204,7 +205,7 @@ export function quizReducer(state: QuizState, action: QuizAction): QuizState {
     case 'SUBMIT_START':
       return {
         ...state,
-        status: 'SUBMITTING',
+        status: 'SUBMITTING_FINAL',
         error: null,
       };
     case 'COPY_LINK_SUCCESS':
