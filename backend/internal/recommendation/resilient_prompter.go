@@ -32,7 +32,7 @@ func isRateLimitErr(err error) bool {
 		return false
 	}
 	errStr := strings.ToLower(err.Error())
-	return strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit")
+	return strings.Contains(errStr, "429") || strings.Contains(errStr, "quota") || strings.Contains(errStr, "limit") || strings.Contains(errStr, "exhausted")
 }
 
 func (r *ResilientPrompter) GenerateAdaptiveQuiz(ctx context.Context, starterAnswer string) ([]models.QuestionResponse, error) {
