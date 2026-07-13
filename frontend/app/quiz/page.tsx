@@ -246,7 +246,7 @@ function QuizInner() {
       try {
         const starter: QuestionResponse = {
           question: "How would you describe your week so far?",
-          options: ["Exhausting", "Rollercoaster", "Chill", "Productive"],
+          options: ["Exhausting", "Rollercoaster", "Chill", "Productive", "Surprise me"],
           is_final: false
         };
         dispatch({ type: 'INIT_SUCCESS', payload: { currentQ: starter } });
@@ -338,7 +338,7 @@ function QuizInner() {
   const startPersonB = () => {
     const starter: QuestionResponse = {
       question: "How would you describe your week so far?",
-      options: ["Exhausting", "Rollercoaster", "Chill", "Productive"],
+      options: ["Exhausting", "Rollercoaster", "Chill", "Productive", "Surprise me"],
       is_final: false
     };
     dispatch({ type: 'START_PERSON_B', payload: { currentQ: starter } });
