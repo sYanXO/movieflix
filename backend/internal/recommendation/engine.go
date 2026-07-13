@@ -370,9 +370,10 @@ func getStaticQuizFallback() []models.QuestionResponse {
 			IsFinal:  false,
 		},
 		{
-			Question: "What do we absolutely want to avoid today?",
-			Options:  []string{"Gore", "Heavy romance", "Subtitles", "Nope, anything goes"},
-			IsFinal:  false,
+			Question:      "What do we absolutely want to avoid today?",
+			Options:       []string{"Gore", "Heavy romance", "Subtitles", "Nope, anything goes"},
+			IsFinal:       false,
+			IsMultiSelect: true,
 		},
 	}
 }
