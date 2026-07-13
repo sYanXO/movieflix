@@ -43,6 +43,9 @@ func (a *GeminiAdapter) GenerateText(ctx context.Context, prompt string) (string
 	if len(result.Candidates) == 0 {
 		return "", fmt.Errorf("no candidates returned")
 	}
+	if result.Candidates[0].Content == nil {
+		return "", fmt.Errorf("candidate content is nil (possibly blocked by safety filters)")
+	}
 	var sb strings.Builder
 	for _, part := range result.Candidates[0].Content.Parts {
 		sb.WriteString(part.Text)
