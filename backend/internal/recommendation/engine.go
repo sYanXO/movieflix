@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"moodflix/internal/db"
@@ -241,17 +242,23 @@ func (e *DefaultRecommendationEngine) Explain(ctx context.Context, profile *mode
 	return e.prompter.Explain(ctx, profile, answers, movie)
 }
 
+// cacheEntry wraps a recommendation response with its creation time for TTL eviction.
+type cacheEntry struct {
+	response  *models.RecommendResponse
+	createdAt time.Time
+}
+
 // CachedRecommendationEngine wraps an engine with in-memory caching.
 type CachedRecommendationEngine struct {
 	inner RecommendationEngine
-	cache map[string]*models.RecommendResponse
+	cache map[string]cacheEntry
 	mu    sync.RWMutex
 }
 
 func NewCachedEngine(inner RecommendationEngine) *CachedRecommendationEngine {
 	return &CachedRecommendationEngine{
 		inner: inner,
-		cache: make(map[string]*models.RecommendResponse),
+		cache: make(map[string]cacheEntry),
 	}
 }
 
@@ -262,11 +269,12 @@ func (c *CachedRecommendationEngine) GetRecommendations(ctx context.Context, ans
 	cached, hit := c.cache[key]
 	c.mu.RUnlock()
 
-	if hit {
+	// Cache TTL: 24 hours
+	if hit && time.Since(cached.createdAt) < 24*time.Hour {
 		log.Println("⚡ Recommendation cache hit! Returning cached recommendations.")
 		return &models.RecommendResponse{
-			Recommendations: cached.Recommendations,
-			MoodProfile:     cached.MoodProfile,
+			Recommendations: cached.response.Recommendations,
+			MoodProfile:     cached.response.MoodProfile,
 		}, nil
 	}
 
@@ -277,9 +285,16 @@ func (c *CachedRecommendationEngine) GetRecommendations(ctx context.Context, ans
 	}
 
 	c.mu.Lock()
-	c.cache[key] = &models.RecommendResponse{
-		Recommendations: response.Recommendations,
-		MoodProfile:     response.MoodProfile,
+	// Bounded size: if cache grows too large, clear it entirely to prevent memory leak
+	if len(c.cache) > 1000 {
+		c.cache = make(map[string]cacheEntry)
+	}
+	c.cache[key] = cacheEntry{
+		response: &models.RecommendResponse{
+			Recommendations: response.Recommendations,
+			MoodProfile:     response.MoodProfile,
+		},
+		createdAt: time.Now(),
 	}
 	c.mu.Unlock()
 
