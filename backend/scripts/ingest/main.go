@@ -45,7 +45,12 @@ type RawMovie struct {
 }
 
 func main() {
-	_ = godotenv.Load()
+	// Find paths relative to script
+	_, filename, _, _ := runtime.Caller(0)
+	scriptDir := filepath.Dir(filename)
+	backendDir := filepath.Join(scriptDir, "../..")
+	
+	_ = godotenv.Load(filepath.Join(backendDir, ".env"))
 
 	geminiKey := os.Getenv("GEMINI_API_KEY")
 	if geminiKey == "" {
@@ -56,10 +61,7 @@ func main() {
 		dbURL = "postgres://moodflix:moodflix@localhost:5433/moodflix"
 	}
 
-	// Find data file
-	_, filename, _, _ := runtime.Caller(0)
-	scriptDir := filepath.Dir(filename)
-	csvPath := filepath.Join(scriptDir, "../../data/movies_metadata.csv")
+	csvPath := filepath.Join(backendDir, "data/movies_metadata.csv")
 	if len(os.Args) > 1 {
 		csvPath = os.Args[1]
 	}
