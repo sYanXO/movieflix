@@ -47,34 +47,13 @@ func (e *DefaultRecommendationEngine) GetRecommendations(ctx context.Context, an
 		return nil, fmt.Errorf("answers cannot be empty")
 	}
 
-	var (
-		profile  *models.MoodProfile
-		embedding []float32
-		parseErr  error
-		embedErr  error
-		wg        sync.WaitGroup
-	)
-
-	wg.Add(2)
-
-	// Goroutine A: Parse answers into structured MoodProfile
-	go func() {
-		defer wg.Done()
-		profile, parseErr = e.prompter.ParseMoodProfile(ctx, answers)
-	}()
-
-	// Goroutine B: Embed raw answers text in parallel
-	go func() {
-		defer wg.Done()
-		rawText := buildRawAnswersText(answers)
-		embedding, embedErr = e.adapter.EmbedText(ctx, rawText)
-	}()
-
-	wg.Wait()
-
+	profile, parseErr := e.prompter.ParseMoodProfile(ctx, answers)
 	if parseErr != nil {
 		return nil, fmt.Errorf("mood parsing failed: %w", parseErr)
 	}
+
+	profileText := buildProfileText(profile)
+	embedding, embedErr := e.adapter.EmbedText(ctx, profileText)
 
 	var candidates []models.Movie
 	var err error
@@ -321,18 +300,6 @@ func (c *CachedRecommendationEngine) Explain(ctx context.Context, profile *model
 	return c.inner.Explain(ctx, profile, answers, movie)
 }
 
-// buildRawAnswersText concatenates answers into a descriptive string.
-func buildRawAnswersText(answers map[string]string) string {
-	var sb strings.Builder
-	keys := []string{"q1", "q2", "q3", "q4", "q5"}
-	for _, k := range keys {
-		if v, ok := answers[k]; ok && v != "" {
-			sb.WriteString(v)
-			sb.WriteString(". ")
-		}
-	}
-	return strings.TrimSpace(sb.String())
-}
 
 // getCacheKey builds a unique key representing the quiz answers.
 func getCacheKey(answers map[string]string) string {
