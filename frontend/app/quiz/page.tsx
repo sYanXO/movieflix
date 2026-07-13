@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateAdaptiveQuiz, getRecommendations, getFriendRecommendations, createSession, getSession, submitSession, QuestionResponse, SessionRepository } from '@/lib/api';
@@ -209,6 +209,11 @@ function QuizInner() {
   const isLoading = status === 'INITIALIZING' || status === 'LOADING_NEXT_QUESTION';
   const isSubmitting = status === 'SUBMITTING';
 
+  const isAnswerLocked = useRef(false);
+  useEffect(() => {
+    isAnswerLocked.current = false;
+  }, [questionNum]);
+
   useEffect(() => {
     const loadQuiz = async () => {
       const sessionParam = searchParams.get('session_id');
@@ -340,7 +345,8 @@ function QuizInner() {
   };
 
   const handleAnswer = async (option: string) => {
-    if (!currentQ) return;
+    if (!currentQ || status !== 'TAKING_QUIZ' || isAnswerLocked.current) return;
+    isAnswerLocked.current = true;
     dispatch({ type: 'ANSWER_SELECT', payload: { option, currentQ } });
     await new Promise(r => setTimeout(r, 200));
     const qKey = `q${questionNum}`;
@@ -354,7 +360,8 @@ function QuizInner() {
   };
 
   const submitMultiSelect = async () => {
-    if (!currentQ) return;
+    if (!currentQ || status !== 'TAKING_QUIZ' || isAnswerLocked.current) return;
+    isAnswerLocked.current = true;
     dispatch({ type: 'SUBMIT_MULTI_SELECT', payload: { currentQ } });
     const value = multiSelected.size === 0 ? 'Nope, anything goes' : Array.from(multiSelected).join(', ');
     const qKey = `q${questionNum}`;
